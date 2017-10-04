@@ -1,5 +1,6 @@
 #!python3
 # -*- coding: utf-8 -*-
+# Utility app to check EXIF of individual file
 
 import exifread
 import os
