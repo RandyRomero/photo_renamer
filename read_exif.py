@@ -8,7 +8,7 @@ import os
 
 def read_exif(file):
     with open(file, 'rb') as image:
-        tags = exifread.process_file(image)
+        tags = exifread.process_file(image, details=False)
         if len(tags.keys()) < 1:
             print('The is no EXIF in this file.')
         for tag, value in tags.items():
