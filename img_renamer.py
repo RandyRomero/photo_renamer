@@ -13,11 +13,12 @@ image_extension = ('.jpg', '.jpeg')
 def process_files(path_with_images):
 
     def work_with_exif_data(exif, picture):
-        images_with_info = []
+        images_with_info = []  # List of all images with their info from exif
+        to_print = ''  # All info about one particular image in string format
 
         date_time = str(exif.get('EXIF DateTimeOriginal', None))  # Get date when picture was shot
 
-        if date_time == 0:  # If there is no date and time - exit function
+        if date_time == 'None':  # If there is no date and time - exit function
             print('There is no EXIF date')
             return
 
@@ -44,9 +45,10 @@ def process_files(path_with_images):
 
         # Prepare every entry to be printed out
         for item in images_with_info:
-            to_print = ''
             for i in item:
                 to_print += i + ' '
+                to_print = to_print.replace(':', '.')
+                to_print = to_print.replace('/', '')
         print(to_print)
 
     # Search for photos, open them and extract exif info
