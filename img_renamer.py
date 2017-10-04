@@ -15,30 +15,29 @@ def process_files(path_with_images):
     def work_with_exif_data(exif, picture):
         images_with_info = []
 
-        date_time = exif.get('EXIF DateTimeOriginal', 0)  # Get date when picture was shot
+        date_time = str(exif.get('EXIF DateTimeOriginal', None))  # Get date when picture was shot
 
         if date_time == 0:  # If there is no date and time - exit function
             print('There is no EXIF date')
             return
 
-        camera_brand = str(exif.get('Image Make', 0))
-        camera_model = exif.get('Image Model', 0)
-        lens_brand = exif.get('EXIF LensMake', 0)
-        lens_model = exif.get('EXIF LensModel', 0)
-        print(type(camera_brand))
+        camera_brand = str(exif.get('Image Make', None))
+        camera_model = str(exif.get('Image Model', None))
+        lens_brand = str(exif.get('EXIF LensMake', None))
+        lens_model = str(exif.get('EXIF LensModel', None))
 
         # No body cares whether Nikon is corporation of whatever
-        if str(camera_brand) == 'NIKON CORPORATION':
+        if camera_brand == 'NIKON CORPORATION':
             camera_brand = 'NIKON'
 
         # If camera brand is also denoted in camera model - get rid of camera brand in camera model
-        if str(camera_brand) in str(camera_model):
-            camera_model = (str(camera_model).replace(str(camera_brand), ''))[1:]
+        if camera_brand in camera_model:
+            camera_model = (camera_model.replace(camera_brand, ''))[1:]
 
         # Add entries in list if entry is not empty (contains zero in our case)
         one_image_with_info = []
         for entry in [picture, date_time, camera_brand, camera_model, lens_brand, lens_model]:
-            if entry != 0:
+            if entry != 'None':
                 one_image_with_info.append(entry)
             # Add list with path to image and with image's info into one big list
             images_with_info.append(one_image_with_info)
@@ -47,8 +46,8 @@ def process_files(path_with_images):
         for item in images_with_info:
             to_print = ''
             for i in item:
-                to_print += str(i) + ' '
-            print(to_print)
+                to_print += i + ' '
+        print(to_print)
 
     # Search for photos, open them and extract exif info
     for root, subfolders, files in os.walk(path_with_images):
