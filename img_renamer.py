@@ -34,7 +34,7 @@ def work_with_exif_data(exif, picture):
     date_time = str(exif.get('EXIF DateTimeOriginal', None))  # Get date when picture was shot
 
     if date_time == 'None':  # If there is no date and time - exit function
-        print('There is no EXIF date')
+        print(picture + ' --- there is no EXIF date.')
         return
 
     camera_brand = str(exif.get('Image Make', None))
