@@ -34,7 +34,7 @@ def work_with_exif_data(exif, picture):
     date_time = str(exif.get('EXIF DateTimeOriginal', None))  # Get date when picture was shot
 
     if date_time == 'None':  # If there is no date and time - exit function
-        print(picture + ' --- there is no EXIF date.')
+        print(picture + ' --- there is no EXIF data.')
         return
 
     camera_brand = str(exif.get('Image Make', None))
@@ -58,10 +58,10 @@ def work_with_exif_data(exif, picture):
     images_with_info.append(one_image_with_info)
 
     # Prepare every entry to be printed out
-    for item in one_image_with_info:
-        to_print += item + ' '
-        to_print = to_print.replace(':', '-')
-        to_print = to_print.replace('/', '')
+    for i in range(1, len(one_image_with_info)):
+        to_print += one_image_with_info[i] + ' '
+    to_print = to_print.replace(':', '-').replace('/', '')
+    to_print = picture + ' ' + to_print
     print(to_print)
 
 
@@ -78,12 +78,12 @@ while True:
         print('This path doesn\'t exist. Try another one')
         continue
 
-while True:
-    rename_or_not = input('Do you want to rename these photos? y/n: ')
-    if rename_or_not.lower() == 'y':
-        rename_photos()
-    elif rename_or_not.lower() == 'n':
-        print('Ciao!')
-        break
-    else:
-        print('It is wrong input, try again.')
+# while True:
+#     rename_or_not = input('Do you want to rename these photos? y/n: ')
+#     if rename_or_not.lower() == 'y':
+#         rename_photos()
+#     elif rename_or_not.lower() == 'n':
+#         print('Ciao!')
+#         break
+#     else:
+#         print('It is wrong input, try again.')
