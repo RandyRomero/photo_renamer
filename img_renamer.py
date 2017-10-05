@@ -10,6 +10,18 @@ import exifread
 images_with_info = []  # List of all images with their info from exif
 
 
+def remove_repeated_words(camera_info):
+    # Remove name of brand or whatever if they mentioned moe than one time
+
+    words_object = {}
+    for item in camera_info.split(' '):  # Memorize in dictionary only one instance of every word
+        if item not in words_object.keys():
+            words_object[item] = item
+
+    # Convert back to string from list and return
+    return ' '.join(list(words_object.values()))
+
+
 def process_files(path_with_images):
     # Search for photos, open them and extract exif info
 
@@ -29,7 +41,6 @@ def work_with_exif_data(exif, picture):
     # Gather info about every image and store all in list
 
     one_image_with_info = []  # All info about image in list form
-    to_print = ''  # All info about one particular image in string format
 
     date_time = str(exif.get('EXIF DateTimeOriginal', None))  # Get date when picture was shot
 
@@ -46,23 +57,15 @@ def work_with_exif_data(exif, picture):
     if camera_brand == 'NIKON CORPORATION':
         camera_brand = 'NIKON'
 
-    # If camera brand is also denoted in camera model - get rid of camera brand in camera model
-    if camera_brand in camera_model:
-        camera_model = (camera_model.replace(camera_brand, ''))[1:]
-
-    # Add entries in list if entry is not empty (contains zero in our case)
-    for entry in [picture, date_time, camera_brand, camera_model, lens_brand, lens_model]:
+    # Make string out of photo date, camera model etc and put it in one list with path
+    name_string = ''
+    for entry in [date_time, camera_brand, camera_model, lens_brand, lens_model]:
         if entry != 'None':
-            one_image_with_info.append(entry)
-    # Add list with path to image and with image's info into one big list
+            name_string += entry + ' '
+    name_string = remove_repeated_words(name_string.replace(':', '-').replace('/', ''))
+    one_image_with_info.extend([picture, name_string])
+    print(one_image_with_info[0] + ' ' + one_image_with_info[1])
     images_with_info.append(one_image_with_info)
-
-    # Prepare every entry to be printed out
-    for i in range(1, len(one_image_with_info)):
-        to_print += one_image_with_info[i] + ' '
-    to_print = to_print.replace(':', '-').replace('/', '')
-    to_print = picture + ' ' + to_print
-    print(to_print)
 
 
 def rename_photos():
@@ -73,6 +76,7 @@ while True:
     if os.path.exists(path_to_look_for_photos):
         print('Gotcha!')
         process_files(path_to_look_for_photos)
+        print('There are ' + str(len(images_with_info)) + ' files to rename.')
         break
     else:
         print('This path doesn\'t exist. Try another one')
