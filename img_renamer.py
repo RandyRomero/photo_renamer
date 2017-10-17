@@ -40,6 +40,21 @@ def process_files(path_with_images):
 def work_with_exif_data(exif, picture):
     # Gather info about every image and store all in list
 
+    def get_normal_name():
+        # Convert code names to meaningful names
+        nonlocal camera_brand
+        nonlocal camera_model
+
+        # Nobody cares whether Nikon is a corporation or whatever
+        if camera_brand == 'NIKON CORPORATION':
+            camera_brand = 'NIKON'
+
+        if camera_model in ['G8342', 'G8341', 'G8343']:
+            camera_model = 'Xperia XZ1'
+
+        if camera_model == 'chiron':
+            camera_model = 'Mi Mix 2'
+
     one_image_with_info = []  # All info about image in list form
 
     date_time = str(exif.get('EXIF DateTimeOriginal', None))  # Get date when picture was shot
@@ -48,14 +63,17 @@ def work_with_exif_data(exif, picture):
         print(picture + ' --- there is no EXIF data.')
         return
 
-    camera_brand = str(exif.get('Image Make', None))
-    camera_model = str(exif.get('Image Model', None))
-    lens_brand = str(exif.get('EXIF LensMake', None))
-    lens_model = str(exif.get('EXIF LensModel', None))
+    camera_brand = str(exif.get('Image Make'))
+    camera_model = str(exif.get('Image Model'))
+    lens_brand = str(exif.get('EXIF LensMake'))
+    lens_model = str(exif.get('EXIF LensModel'))
 
-    # No body cares whether Nikon is corporation of whatever
-    if camera_brand == 'NIKON CORPORATION':
-        camera_brand = 'NIKON'
+    # Show raw data from exif
+    print('Raw data from ' + picture)
+    print('DateTime: {} Camera brand: {} Camera model: {} Lens brand: {} Lens model: {}'
+          .format(date_time, camera_brand, camera_model, lens_brand, lens_model))
+
+    get_normal_name()
 
     # Make string out of photo date, camera model etc and put it in one list with path
     name_string = ''
@@ -64,12 +82,13 @@ def work_with_exif_data(exif, picture):
             name_string += entry + ' '
     name_string = remove_repeated_words(name_string.replace(':', '-').replace('/', ''))
     one_image_with_info.extend([picture, name_string])
-    print(one_image_with_info[0] + ' ' + one_image_with_info[1])
+    print('How it will be renamed: ')
+    print(one_image_with_info[1] + '\n')
     images_with_info.append(one_image_with_info)
 
 
 def rename_photos():
-    print('haha lol kek')
+    print('Function hasn\'t been written yet')
 
 while True:
     path_to_look_for_photos = input('Please type in directory with your photos:\n')
