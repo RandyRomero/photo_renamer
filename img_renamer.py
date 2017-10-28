@@ -72,6 +72,7 @@ def work_with_exif_data(exif, path_to_picture):
 
     # Replace not allowed characters before calling function
     name_string = remove_repeated_words(name_string.replace(':', '-').replace('/', ''))
+    name_string = name_string[:-1] + '.jpg'
     one_image_with_info.extend([path_to_picture, name_string])
     print('How it will be renamed: ')
     print(one_image_with_info[1] + '\n')
@@ -80,6 +81,7 @@ def work_with_exif_data(exif, path_to_picture):
 
 # def rename_photos():
 #     for item in images_with_info:
+
 
 
 
