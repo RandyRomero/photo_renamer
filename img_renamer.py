@@ -5,7 +5,8 @@
 
 import os
 import shutil
-import exifread
+import exifread  # library to get exif data from file
+from get_normal_name import get_normal_name
 
 images_with_info = []  # List of all images with their info from exif
 
@@ -34,33 +35,18 @@ def process_files(path_with_images):
                     # Details=False to avoid extracting useless stuff and overflowing memory
                     tags = exifread.process_file(f, details=False)
                     image = os.path.join(root, file)
-                    work_with_exif_data(tags, image)
+                    images_with_info.append(work_with_exif_data(tags, image))
 
 
 def work_with_exif_data(exif, picture):
     # Gather info about every image and store all in list
-
-    def get_normal_name():
-        # Convert code names to meaningful names
-        nonlocal camera_brand
-        nonlocal camera_model
-
-        # Nobody cares whether Nikon is a corporation or whatever
-        if camera_brand == 'NIKON CORPORATION':
-            camera_brand = 'NIKON'
-
-        if camera_model in ['G8342', 'G8341', 'G8343']:
-            camera_model = 'Xperia XZ1'
-
-        if camera_model == 'chiron':
-            camera_model = 'Mi Mix 2'
 
     one_image_with_info = []  # All info about image in list form
 
     date_time = str(exif.get('EXIF DateTimeOriginal', None))  # Get date when picture was shot
 
     if date_time == 'None':  # If there is no date and time - exit function
-        print(picture + ' --- there is no EXIF data.')
+        print(picture + ' --- there is no EXIF data.\n')
         return
 
     camera_brand = str(exif.get('Image Make'))
@@ -73,7 +59,8 @@ def work_with_exif_data(exif, picture):
     print('DateTime: {} Camera brand: {} Camera model: {} Lens brand: {} Lens model: {}'
           .format(date_time, camera_brand, camera_model, lens_brand, lens_model))
 
-    get_normal_name()
+    camera_brand, camera_model, lens_brand, lens_model = get_normal_name(camera_brand, camera_model, lens_brand,
+                                                                         lens_model)
 
     # Make string out of photo date, camera model etc and put it in one list with path
     name_string = ''
@@ -84,11 +71,13 @@ def work_with_exif_data(exif, picture):
     one_image_with_info.extend([picture, name_string])
     print('How it will be renamed: ')
     print(one_image_with_info[1] + '\n')
-    images_with_info.append(one_image_with_info)
+    return one_image_with_info
 
 
-def rename_photos():
-    print('Function hasn\'t been written yet')
+# def rename_photos():
+#     for item in images_with_info:
+#         print('lol')
+
 
 while True:
     path_to_look_for_photos = input('Please type in directory with your photos:\n')
