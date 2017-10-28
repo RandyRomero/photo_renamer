@@ -23,7 +23,9 @@ def process_files(path_with_images):
                     # details=False to avoid extracting superfluous data from EXIF and overflowing memory
                     tags = exifread.process_file(f, details=False)
                     path_to_image = os.path.join(root, file)
-                    images_with_info.append(work_with_exif_data(tags, path_to_image))
+                    data = work_with_exif_data(tags, path_to_image)
+                    if data:
+                        images_with_info.append(data)
 
 
 def work_with_exif_data(exif, path_to_picture):
@@ -79,10 +81,16 @@ def work_with_exif_data(exif, path_to_picture):
     return one_image_with_info
 
 
-# def rename_photos():
-#     for item in images_with_info:
+def rename_photos():
+    for item in images_with_info:
+        # Remove name of file from full path to file
 
-
+        new_name = os.path.join('\\'.join(item[0].split('\\')[:-1]), item[1])
+        counter = 0
+        while os.path.exists(new_name):
+            counter += 1
+            new_name = new_name[:-4] + ' {}.jpg'.format(counter)
+        print(new_name)
 
 
 while True:
@@ -95,13 +103,14 @@ while True:
     else:
         print('This path doesn\'t exist. Try another one')
         continue
-#
-# while True:
-#     rename_or_not = input('Do you want to rename these photos? y/n: ')
-#     if rename_or_not.lower() == 'y':
-#         rename_photos()
-#     elif rename_or_not.lower() == 'n':
-#         print('Ciao!')
-#         break
-#     else:
-#         print('It is wrong input, try again.')
+
+while True:
+    rename_or_not = input('Do you want to rename these photos? y/n: ')
+    if rename_or_not.lower() == 'y':
+        rename_photos()
+        break
+    elif rename_or_not.lower() == 'n':
+        print('Ciao!')
+        break
+    else:
+        print('It is wrong input, try again.')
