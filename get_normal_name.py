@@ -4,8 +4,6 @@
 
 def get_normal_name(camera_brand, camera_model, lens_brand, lens_model):
     # Convert code names to meaningful names
-    # nonlocal camera_brand
-    # nonlocal camera_model
 
     # Nobody cares whether Nikon is a corporation or whatever
     if camera_brand == 'NIKON CORPORATION':
