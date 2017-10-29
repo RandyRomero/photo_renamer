@@ -6,6 +6,10 @@
 import os
 import exifread  # library to get exif data from file
 from get_normal_name import get_normal_name
+import handle_logs
+
+logFile, logConsole = handle_logs.set_loggers()
+handle_logs.clean_log_folder(20, logFile, logConsole)
 
 images_with_info = []  # List of all images with their info from exif
 name_strings = []
@@ -113,7 +117,7 @@ def rename_photos():
         else:
             try:
                 os.rename(item[0], new_name + '.jpg')
-                print(new_name + '.jpg renamed successfully.')
+                print(new_name + '.jpg was renamed successfully.')
             except PermissionError:
                 print(item[0] + ': ERROR: Permission denied.')
                 perm_denied_files.append(item[0])
@@ -130,16 +134,17 @@ while True:
         print('This path doesn\'t exist. Try another one')
         continue
 
-while True:
-    rename_or_not = input('Do you want to rename these photos? y/n: ')
-    if rename_or_not.lower() == 'y':
-        rename_photos()
-        break
-    elif rename_or_not.lower() == 'n':
-        print('Ciao!')
-        break
-    else:
-        print('It is wrong input, try again.')
+if len(images_with_info) > 0:
+    while True:
+        rename_or_not = input('Do you want to rename these photos? y/n: ')
+        if rename_or_not.lower() == 'y':
+            rename_photos()
+            break
+        elif rename_or_not.lower() == 'n':
+            print('Ciao!')
+            break
+        else:
+            print('It is wrong input, try again.')
 
 if len(perm_denied_files) > 0:
     print(str(len(perm_denied_files)) + ' files was skipped because OS denied permission.')
