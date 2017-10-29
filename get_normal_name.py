@@ -12,6 +12,9 @@ def get_normal_name(camera_brand, camera_model, lens_brand, lens_model):
     if camera_brand == 'motorola':
         camera_brand = 'Motorola'
 
+    if camera_model == 'Redmi Note3':
+        camera_model = 'Redmi Note 3 Pro'
+
     if camera_model in ['G8342', 'G8341', 'G8343']:
         camera_model = 'Xperia XZ1'
 
