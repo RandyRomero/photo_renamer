@@ -4,11 +4,12 @@
 # Script that rename photos by date from EXIF when it was taken
 
 import os
-import shutil
+# import shutil
 import exifread  # library to get exif data from file
 from get_normal_name import get_normal_name
 
 images_with_info = []  # List of all images with their info from exif
+name_strings = []
 
 
 def process_files(path_with_images):
@@ -29,7 +30,14 @@ def process_files(path_with_images):
 
 
 def work_with_exif_data(exif, path_to_picture):
-    # Gather info about every image and store all in list
+
+    """
+    Gather info about image and make a string with it
+
+    :param exif: full exif data from current file
+    :param path_to_picture: full path to picture
+    :return: list where first item is path to picture and the second is string with new name for picture
+    """
 
     def remove_repeated_words(camera_info):
         # Remove name of brand or whatever if it is mentioned more than one time
@@ -42,6 +50,19 @@ def work_with_exif_data(exif, path_to_picture):
 
         # Convert back to string from list and return
         return ' '.join(words_object)
+
+    def check_duplicates(string):
+        if string not in name_strings:
+            name_strings.append(string)
+        else:
+            print('DUPLICATE')
+            counter = 2
+            while string + ' ({})'.format(counter) in name_strings:
+                counter += 1
+            string = string + ' ({})'.format(counter)
+            name_strings.append(string)
+
+        return string
 
     one_image_with_info = []  # All info about image in list form
 
@@ -74,23 +95,24 @@ def work_with_exif_data(exif, path_to_picture):
 
     # Replace not allowed characters before calling function
     name_string = remove_repeated_words(name_string.replace(':', '-').replace('/', ''))
-    name_string = name_string[:-1] + '.jpg'
+    name_string = name_string[:-1]
+    name_string = check_duplicates(name_string)
     one_image_with_info.extend([path_to_picture, name_string])
     print('How it will be renamed: ')
-    print(one_image_with_info[1] + '\n')
+    print(one_image_with_info[1] + '.jpg\n')
     return one_image_with_info
 
 
 def rename_photos():
     for item in images_with_info:
         # Remove name of file from full path to file
-
         new_name = os.path.join('\\'.join(item[0].split('\\')[:-1]), item[1])
-        counter = 0
-        while os.path.exists(new_name):
-            counter += 1
-            new_name = new_name[:-4] + ' {}.jpg'.format(counter)
-        print(new_name)
+
+        if os.path.exists(new_name + '.jpg'):
+            print('Error! File already exists')
+        else:
+            os.rename(item[0], new_name + '.jpg')
+            print(new_name + '.jpg renamed successfully.')
 
 
 while True:
