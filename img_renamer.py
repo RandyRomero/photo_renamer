@@ -10,6 +10,7 @@ import handle_logs
 
 logFile, logConsole = handle_logs.set_loggers()
 handle_logs.clean_log_folder(20, logFile, logConsole)
+logFile.info('Program has started')
 
 images_with_info = []  # List of all images with their info from exif
 name_strings = []
@@ -122,13 +123,18 @@ def rename_photos():
                 print(item[0] + ': ERROR: Permission denied.')
                 perm_denied_files.append(item[0])
 
+print('Hello! This script can help you to automatically rename your photos (jpg files) from whatever name they have to'
+      ' name like Date and time of creation + camera nad lens. For example: '
+      '2017-09-05 09-15-27 Canon EOS 80D EF-S24mm f2.8 STM.jpg')
 
 while True:
     path_to_look_for_photos = input('Please type in directory with your photos:\n')
     if os.path.exists(path_to_look_for_photos):
         print('Gotcha!')
+        logFile.info('Path to look up for pictures to renames is ' + path_to_look_for_photos + '\n')
         process_files(path_to_look_for_photos)
         print('There are ' + str(len(images_with_info)) + ' files to rename.')
+        logFile.info('There are ' + str(len(images_with_info)) + ' files to rename.\n')
         break
     else:
         print('This path doesn\'t exist. Try another one')
