@@ -4,12 +4,12 @@
 # Script that rename photos by date from EXIF when it was taken
 
 import os
-# import shutil
 import exifread  # library to get exif data from file
 from get_normal_name import get_normal_name
 
 images_with_info = []  # List of all images with their info from exif
 name_strings = []
+perm_denied_files = []
 
 
 def process_files(path_with_images):
@@ -72,10 +72,10 @@ def work_with_exif_data(exif, path_to_picture):
         print(path_to_picture + ' --- there is no EXIF data.\n')
         return
 
-    camera_brand = str(exif.get('Image Make'))
-    camera_model = str(exif.get('Image Model'))
-    lens_brand = str(exif.get('EXIF LensMake'))
-    lens_model = str(exif.get('EXIF LensModel'))
+    camera_brand = str(exif.get('Image Make')).strip()
+    camera_model = str(exif.get('Image Model')).strip()
+    lens_brand = str(exif.get('EXIF LensMake')).strip()
+    lens_model = str(exif.get('EXIF LensModel')).strip()
 
     # Show raw data from exif
     print('Raw data from ' + path_to_picture)
@@ -111,8 +111,12 @@ def rename_photos():
         if os.path.exists(new_name + '.jpg'):
             print('Error! File already exists')
         else:
-            os.rename(item[0], new_name + '.jpg')
-            print(new_name + '.jpg renamed successfully.')
+            try:
+                os.rename(item[0], new_name + '.jpg')
+                print(new_name + '.jpg renamed successfully.')
+            except PermissionError:
+                print(item[0] + ': ERROR: Permission denied.')
+                perm_denied_files.append(item[0])
 
 
 while True:
@@ -136,3 +140,9 @@ while True:
         break
     else:
         print('It is wrong input, try again.')
+
+if len(perm_denied_files) > 0:
+    print(str(len(perm_denied_files)) + ' files was skipped because OS denied permission.')
+    print('There are these files: ')
+    for item in perm_denied_files:
+        print(item)

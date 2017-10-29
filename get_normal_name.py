@@ -6,11 +6,20 @@ def get_normal_name(camera_brand, camera_model, lens_brand, lens_model):
     # Convert code names to meaningful names
 
     # Nobody cares whether Nikon is a corporation or whatever
+    if camera_brand == 'OLYMPUS IMAGING CORP.':
+        camera_brand = 'Olympus'
+
+    if camera_brand == 'SONY':
+        camera_brand = 'Sony'
+
     if camera_brand == 'NIKON CORPORATION':
         camera_brand = 'NIKON'
 
     if camera_brand == 'motorola':
         camera_brand = 'Motorola'
+
+    if camera_model == 'SP570UZ':
+        camera_model = 'SP-570 UZ'
 
     if camera_model == 'Redmi Note3':
         camera_model = 'Redmi Note 3 Pro'
