@@ -75,6 +75,7 @@ def work_with_exif_data(exif, path_to_picture):
 
     if date_time == 'None':  # If there is no date and time - exit function
         print(path_to_picture + ' --- there is no EXIF data.\n')
+        logFile.info(path_to_picture + ' --- there is no EXIF data.\n')
         return
 
     camera_brand = str(exif.get('Image Make')).strip()
@@ -84,8 +85,11 @@ def work_with_exif_data(exif, path_to_picture):
 
     # Show raw data from exif
     print('Raw data from ' + path_to_picture)
+    logFile.info('Raw data from ' + path_to_picture)
     print('DateTime: {} Camera brand: {} Camera model: {} Lens brand: {} Lens model: {}'
           .format(date_time, camera_brand, camera_model, lens_brand, lens_model))
+    logFile.info('DateTime: {} Camera brand: {} Camera model: {} Lens brand: {} Lens model: {}'
+                 .format(date_time, camera_brand, camera_model, lens_brand, lens_model))
 
     camera_brand, camera_model, lens_brand, lens_model = get_normal_name(camera_brand, camera_model, lens_brand,
                                                                          lens_model)
@@ -105,6 +109,8 @@ def work_with_exif_data(exif, path_to_picture):
     one_image_with_info.extend([path_to_picture, name_string])
     print('How it will be renamed: ')
     print(one_image_with_info[1] + '.jpg\n')
+    logFile.info('How it will be renamed: ')
+    logFile.info(one_image_with_info[1] + '.jpg\n')
     return one_image_with_info
 
 
@@ -115,12 +121,15 @@ def rename_photos():
 
         if os.path.exists(new_name + '.jpg'):
             print('Error! File already exists')
+            logFile.info('Error! File already exists\n')
         else:
             try:
                 os.rename(item[0], new_name + '.jpg')
                 print(new_name + '.jpg was renamed successfully.')
+                logFile.info(new_name + '.jpg was renamed successfully.')
             except PermissionError:
                 print(item[0] + ': ERROR: Permission denied.')
+                logFile.info(item[0] + ': ERROR: Permission denied.\n')
                 perm_denied_files.append(item[0])
 
 print('Hello! This script can help you to automatically rename your photos (jpg files) from whatever name they have to'
@@ -129,6 +138,7 @@ print('Hello! This script can help you to automatically rename your photos (jpg 
 
 while True:
     path_to_look_for_photos = input('Please type in directory with your photos:\n')
+    logFile.info('Please type in directory with your photos:\n')
     if os.path.exists(path_to_look_for_photos):
         print('Gotcha!')
         logFile.info('Path to look up for pictures to renames is ' + path_to_look_for_photos + '\n')
@@ -143,17 +153,21 @@ while True:
 if len(images_with_info) > 0:
     while True:
         rename_or_not = input('Do you want to rename these photos? y/n: ')
+        logFile.info('Do you want to rename these photos? y/n: \n')
         if rename_or_not.lower() == 'y':
             rename_photos()
             break
         elif rename_or_not.lower() == 'n':
             print('Ciao!')
+            logFile.info('Ciao!\n')
             break
         else:
             print('It is wrong input, try again.')
+            logFile.info('It is wrong input, try again.\n')
 
 if len(perm_denied_files) > 0:
     print(str(len(perm_denied_files)) + ' files was skipped because OS denied permission.')
+    logFile.info(str(len(perm_denied_files)) + ' files was skipped because OS denied permission.\n')
     print('There are these files: ')
     for item in perm_denied_files:
         print(item)
