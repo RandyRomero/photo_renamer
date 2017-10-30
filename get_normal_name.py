@@ -27,6 +27,15 @@ def get_normal_name(camera_brand, camera_model, lens_brand, lens_model):
     if camera_brand == 'motorola':
         camera_brand = 'Motorola'
 
+    if camera_model == 'FE150,X730':
+        camera_model = 'FE150 X730'
+
+    if camera_model == 'Canon DIGITAL IXUS 60':
+        camera_model = 'Digital IXUS 60'
+
+    if camera_model == 'Canon DIGITAL IXUS 65':
+        camera_model = 'Digital IXUS 65'
+
     if camera_model == 'Canon EOS 400D DIGITAL':
         camera_model = 'EOS 400D'
 
