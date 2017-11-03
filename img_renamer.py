@@ -4,8 +4,8 @@
 # Script that rename photos by date from EXIF when it was taken
 
 import os
+import shelve
 import exifread  # library to get exif data from file
-from get_normal_name import get_normal_name
 import handle_logs
 
 logFile, logConsole = handle_logs.set_loggers()
@@ -34,6 +34,17 @@ def process_files(path_with_images):
                         images_with_info.append(data)
 
 
+def open_db():
+    if not os.path.exists('db'):
+        os.mkdir('db')
+    shelve_db = shelve.open('db\\tags_db')
+    shelve_db['test'] = 'database ok'
+    if shelve_db['test']:
+        logConsole.debug('Database ok')
+        logFile.debug('Database ok')
+    return shelve_db
+
+
 def work_with_exif_data(exif, path_to_picture):
 
     """
@@ -43,6 +54,46 @@ def work_with_exif_data(exif, path_to_picture):
     :param path_to_picture: full path to picture
     :return: list where first item is path to picture and the second is string with new name for picture
     """
+
+    def check_tag(tag, tag_type):
+        """
+        Function to look up for name of camera and lens in database. If it is not in db, function asks user whether
+        to use name from EXIF data or give tag a new name to use it for renaming of files"
+
+        :param tag: name of component form EXIF
+        :param tag_type: tape of tag e.g. camera brand, camera model, lens brand, lens model
+        :return: name to use for renaming of file
+        """
+        db_tag = db.get(tag)  # Check whether tag already exists in database
+        if db_tag:  # If yes, use it to rename file
+            return db_tag
+        else:  # If not, ask user how to call it instead
+            user_answer = input('Do you want ' + tag_type + ' to be named ' + tag + '? y/n: ').lower()
+            logFile.info('Do you want ' + tag_type + ' to be named ' + tag + '? y/n: ' + user_answer)
+            while True:
+                if user_answer == 'y':
+                    # Is user wants to use exact name from EXIF - save it in db and return it for renaming
+                    db[tag] = tag
+                    return tag
+                elif user_answer == 'n':  # If user wants to use another name, let him put it in
+                    sure = 'n'
+                    while sure == 'n':
+                        db_tag = input('Please, type new name for ' + tag_type + ' instead of ' + tag + ': ')
+                        logFile.info('Please, type new name for ' + tag_type + ' instead of ' + tag + ': ' + db_tag)
+
+                        sure = input('Are you sure you wanna use ' + db_tag + ' for ' + tag_type +
+                                     ' instead of ' + tag + '? y/n: ').lower()
+                        logFile.info('Are you sure you wanna use ' + db_tag + ' for ' + tag_type +
+                                     ' instead of ' + tag + '? y/n: ' + sure)
+                        if sure == 'y':
+                            db[tag] = db_tag
+                            print('Gotcha.')
+                            return db_tag
+                        else:
+                            continue
+                else:
+                    print('Wrong input. You need to type y or n.')
+                    continue
 
     def remove_repeated_words(camera_info):
         # Remove name of brand or whatever if it is mentioned more than one time
@@ -91,8 +142,17 @@ def work_with_exif_data(exif, path_to_picture):
     logFile.info('DateTime: {} Camera brand: {} Camera model: {} Lens brand: {} Lens model: {}'
                  .format(date_time, camera_brand, camera_model, lens_brand, lens_model))
 
-    camera_brand, camera_model, lens_brand, lens_model = get_normal_name(camera_brand, camera_model, lens_brand,
-                                                                         lens_model)
+    if camera_brand != 'None':
+        camera_brand = check_tag(camera_brand, 'camera_brand')
+
+    if camera_model != 'None':
+        camera_model = check_tag(camera_model, 'camera_model')
+
+    if lens_brand != 'None':
+        lens_brand = check_tag(lens_brand, 'lens_brand')
+
+    if lens_model != 'None':
+        lens_model = check_tag(lens_model, 'lens_model')
 
     # Make string 'name_string' out of photo date, camera model etc and put it in one list with path
     # Example of name_string after loop:
@@ -142,7 +202,10 @@ while True:
     if os.path.exists(path_to_look_for_photos):
         print('Gotcha!')
         logFile.info('Path to look up for pictures to renames is ' + path_to_look_for_photos + '\n')
+        db = open_db()
         process_files(path_to_look_for_photos)
+        db.close()
+        logFile.info('Database was closed successfully')
         print('There are ' + str(len(images_with_info)) + ' files to rename.')
         logFile.info('There are ' + str(len(images_with_info)) + ' files to rename.\n')
         break
