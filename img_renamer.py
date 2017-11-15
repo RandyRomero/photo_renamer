@@ -16,7 +16,7 @@ logFile.info('Program has started')
 
 images_with_info = []  # List of all images with their info from exif
 images_to_delete = []  # list of superfluous copies to remove
-name_strings = []
+name_strings = {}
 perm_denied_files = []
 
 
@@ -111,48 +111,85 @@ def work_with_exif_data(exif, path_to_picture, file):
         # Convert back to string from list and return
         return ' '.join(words_object)
 
-    def check_duplicates(supposed_name, counter):
+    def binary_comparison(current_photo, processed_photo):
+        # Check whether two photos are binary equal
+        with open(current_photo, 'rb') as a:
+            with open(processed_photo, 'rb') as b:
+                if a.read() == b.read():
+                    print('DUPLICATE: "{}" already exists here as "{}"'.format(current_photo, processed_photo))
+                    print('You can delete this extra copy later in this program.')
+                    logFile.info('DUPLICATE: "{}" already exists here as "{}"'.format(current_photo, processed_photo))
+                    logFile.info('You can delete this extra copy later in this program.')
+                    images_to_delete.append(path_to_picture)
+                    return True
+                else:
+                    logFile.info('"{}" is not duplicate of "{}"'.format(current_photo, processed_photo))
+                    return False
+
+    def check_duplicates(supposed_name):
         # Function checks whether file is going to get unique name after renaming.
         # If there is more than one file with this name (usually because of burst shooting) these file should
         # be named as someName[2].jpg, someName[3].jpg and so on. Function just keeps track of every name that app
         # is going to give to every file.
 
-        if supposed_name not in name_strings:
-            name_strings.append(supposed_name)
-            return supposed_name
-        else:
-            print('DUPLICATE')
-            if counter is None:
-                counter = 2
-            while supposed_name + '[{}]'.format(counter) in name_strings:
+        logFile.info('Supposed name is "{}.jpg"'.format(supposed_name))
+        print('Checking for duplicates...')
+        logFile.info('Checking for duplicates...')
+        # Check whether file already exactly that name that script wants to give it
+        if (name_string + '.jpg') == original_filename:
+            print('New name matches current name. This file has already been renamed.')
+            logFile.info('New name matches current name. This file has already been renamed.')
+            return None
+
+        # Avoid giving the same names for photos that were taken during the same second
+        # Also avoid giving new order names to duplicates instead of ignoring them
+        if supposed_name in list(name_strings.keys()):
+            print('That name has already been picked up during this session.')
+            logFile.info('That name has already been picked up during this session.')
+            if binary_comparison(path_to_picture, name_strings[supposed_name]):
+                return None
+            counter = 2
+            # Check if it is possible to give to file a name with next order number
+            while supposed_name + '[{}]'.format(counter) in list(name_strings.keys()):
+                logFile.info('New supposed name is "' + supposed_name + '"[{}].jpg"'.format(counter))
+                # Check if there is already the duplicate of this file
+                if binary_comparison(path_to_picture, name_strings[supposed_name + '[{}]'.format(counter)]):
+                    return None
                 counter += 1
-            final_name = supposed_name + '[{}]'.format(counter)
-            name_strings.append(final_name)
+            logFile.info('New supposed name is "' + supposed_name + '"[{}]"'.format(counter))
+            supposed_name = supposed_name + '[{}]'.format(counter)
 
-        return final_name
+        # Check whether file with the same new name already exists in folder (avoiding duplicates)
+        if os.path.exists(os.path.join('\\'.join(path_to_picture.split('\\')[:-1]), supposed_name + '.jpg')):
+            path_to_existing_copy = '\\'.join(path_to_picture.split('\\')[:-1])
+            # existing_copy = os.path.join('\\'.join(path_to_picture.split('\\')[:-1]), supposed_name + '.jpg')
+            # Check if files are duplicates
+            if binary_comparison(path_to_picture, os.path.join(path_to_existing_copy,  supposed_name + '.jpg')):
+                return None
+            else:
+                # If there is file with this name but not a duplicate of already existing file
+                print('There is already another file with this name.')
+                logFile.warning('There is already another file with this name.')
+                counter = 2
+                # Try to give it new name with next order number
+                while os.path.exists(os.path.join(path_to_existing_copy, supposed_name + '[{}].jpg'.format(counter))):
+                    # Maybe there is already file with this name with order number
+                    if supposed_name + '[{}].jpg'.format(counter) == original_filename:
+                        print('New name matches current name. This file has already been renamed.')
+                        logFile.info('New name matches current name. This file has already been renamed.')
+                        return None
+                    new_supposed_name = os.path.join(path_to_existing_copy, supposed_name + '[{}].jpg'.format(counter))
+                    # while supposed_name + '[{}]'.format(counter) in list(name_strings.keys()):
+                    logFile.info('New supposed name is "' + supposed_name + '"[{}].jpg"'.format(counter))
+                    # To be on safe side check whether file to be renamed and file with this name that already
+                    # exists are duplicates
+                    if binary_comparison(path_to_picture, new_supposed_name):
+                        return None
+                    counter += 1
+                logFile.info('New supposed name is "' + supposed_name + '"[{}]"'.format(counter))
+                supposed_name = supposed_name + '[{}]'.format(counter)
 
-    def binary_comparison(existing_file, original_picture_path):
-        # Explanation below in message_text
-        with open(existing_file, 'rb') as a:
-            with open(original_picture_path, 'rb') as b:
-                # logConsole.debug(existing_file)
-                # logConsole.debug(original_picture_path)
-                if a.read() == b.read():
-                    message_text = 'There is already this photo named \'' + existing_copy + '.jpg\' in this folder.' \
-                                    '\nOld copy will be transferred to trash bin.\n'
-                    print(message_text)
-                    logFile.info(message_text)
-                    # logConsole.debug(os.path.exists(path_to_picture))
-                    images_to_delete.append(original_picture_path)
-                    # print(path_to_picture + ' was removed.')
-                    # logFile.info(path_to_picture + ' was removed.')
-                    return True
-                else:
-                    return False
-                    # logConsole.error('I am not sure that it is possible. So will test and see')
-                    # logFile.error('I am not sure that it is possible. So will test and see')
-                    # db.close()
-                    # sys.exit()
+        return supposed_name
 
     original_filename = file
     one_image_with_info = []  # All info about image in list form
@@ -169,7 +206,8 @@ def work_with_exif_data(exif, path_to_picture, file):
     lens_model = str(exif.get('EXIF LensModel')).strip()
 
     # Show raw data from exif
-    print('Raw data from ' + path_to_picture)
+    print('\nRaw data from ' + path_to_picture)
+    logFile.info('')
     logFile.info('Raw data from ' + path_to_picture)
     print('DateTime: {} Camera brand: {} Camera model: {} Lens brand: {} Lens model: {}'
           .format(date_time, camera_brand, camera_model, lens_brand, lens_model))
@@ -200,56 +238,21 @@ def work_with_exif_data(exif, path_to_picture, file):
     name_string = remove_repeated_words(name_string.replace(':', '-').replace('/', ''))
     name_string = name_string[:-1]
 
-    logConsole.debug(path_to_picture)
-    if path_to_picture == r'C:\ya.disk\YandexDisk\Photo_2017\[01] January\2017-01-01 01-08-55 Xiaomi Redmi Note 3 Pro (2).jpg':
-        logFile.debug('how this file is not on folder?')
-        logConsole.debug('how this file is not on folder?')
+    # logConsole.debug(path_to_picture)
+    # if path_to_picture == r'C:\ya.disk\YandexDisk\Photo_2017\[01] January\2017-01-01 01-08-55.JPG':
+    #     logFile.debug('how this file is not on folder?')
+    #     logConsole.debug('how this file is not on folder?')
     # logConsole.debug(os.path.join('\\'.join(path_to_picture.split('\\')[:-1]), name_string + '.jpg'))
 
-    if (name_string + '.jpg') == original_filename:
-        # File already has exactly this name
-        print('New name matches actual name. This file has already been renamed.\n')
-        logFile.warning('New name matches actual name. This file has already been renamed.\n')
-        return -1
-
-    # Check folder whether there is already a file with name that script wants give to picture
-    if os.path.exists(os.path.join('\\'.join(path_to_picture.split('\\')[:-1]), name_string + '.jpg')):
-        existing_copy = os.path.join('\\'.join(path_to_picture.split('\\')[:-1]), name_string)
-        # Check if already existed files and file in process are the same files by binary comparison
-        if binary_comparison(existing_copy + '.jpg', path_to_picture):
-            return -1
-        counter = 2
-        # If they are not the same, that check maybe there is a file with [2].jpg or [3].jpg etc
-        # logConsole.debug(existing_copy + '[{}].jpg'.format(counter))
-
-        while os.path.exists(existing_copy + '[{}].jpg'.format(counter)):
-            # if there is file with [counter].jpg at the end, check maybe it are exact duplicate of file on process
-            logFile.debug('File \'' + existing_copy + '[{}].jpg\' already exists in this folder.'.format(counter))
-            print('File \'' + existing_copy + '[{}].jpg\' already exists in this folder.'.format(counter))
-            if existing_copy + '[{}].jpg'.format(counter) == path_to_picture:
-                # If now it turns out existing file have the same name, skip renaming and start over with next file
-                print('New name matches actual name. This file has already been renamed.\n')
-                logFile.warning('New name matches actual name. This file has already been renamed.\n')
-                return -1
-            if binary_comparison(existing_copy + '[{}].jpg'.format(counter), path_to_picture):
-                # If yes, skip this file and start over with next one
-                return -1
-            counter += 1
-
-        # name_string = check_duplicates(existing_copy, counter)
-        name_string = existing_copy + '[{}]'.format(counter)
-
+    new_name = check_duplicates(name_string)
+    if new_name is not None:
+        name_string = new_name
     else:
-        name_string = check_duplicates(name_string)
+        return -1
 
     one_image_with_info.extend([path_to_picture, name_string])
 
-    # elif os.path.exists(os.path.join('\\'.join(path_to_picture.split('\\')[:-1]), name_string)):
-    #     # Check if there is already file with this name in folder
-    #     # If yes and if they are exact duplicates then remove not renamed file
-    #     existing_copy = os.path.join('\\'.join(path_to_picture.split('\\')[:-1]), name_string)
-    #     handle_existing_copies(existing_copy)
-    # logConsole.debug(one_image_with_info[1] + '.jpg' + ' vs ' + original_filename)  # just for one test
+    name_strings[name_string] = path_to_picture
     print('How it will be renamed: ')
     print(one_image_with_info[1] + '.jpg\n')
     logFile.info('How it will be renamed: ')
@@ -293,14 +296,15 @@ print('Hello! This script can help you to automatically rename your photos (jpg 
 while True:
     path_to_look_for_photos = input('Please type in directory with your photos:\n')
     logFile.info('Please type in directory with your photos:\n')
-    if os.path.exists(path_to_look_for_photos):
+    if os.path.exists(path_to_look_for_photos) and os.path.isdir(path_to_look_for_photos):
         print('Gotcha!')
         logFile.info('Path to look up for pictures to renames is ' + path_to_look_for_photos + '\n')
         db = open_db()
         process_files(path_to_look_for_photos)
         db.close()
         logFile.info('Database was closed successfully')
-        print('There are ' + str(len(images_with_info)) + ' files to rename.')
+        print('\nThere are ' + str(len(images_with_info)) + ' files to rename.')
+        logFile.info('')
         logFile.info('There are ' + str(len(images_with_info)) + ' files to rename.')
         print('There are ' + str(len(images_to_delete)) + ' old copies to delete.')
         logFile.info('There are ' + str(len(images_to_delete)) + ' old copies to delete.')
@@ -308,6 +312,20 @@ while True:
     else:
         print('This path doesn\'t exist. Try another one')
         continue
+
+if len(images_with_info) > 0:
+    while True:
+        see_rename_list_or_not = input('Do you want to see list of files to be renamed? y/n: ')
+        logFile.info('Do you want to see list of files to be renamed? y/n: \n')
+        if see_rename_list_or_not.lower() == 'y':
+            for item in images_with_info:
+                print('"{}" will be renamed as "{}.jpg"'.format(item[0], item[1]))
+            break
+        elif see_rename_list_or_not.lower() == 'n':
+            break
+        else:
+            print('It is wrong input, try again.')
+            logFile.info('It is wrong input, try again.\n')
 
 if len(images_with_info) > 0:
     while True:
@@ -319,6 +337,20 @@ if len(images_with_info) > 0:
         elif rename_or_not.lower() == 'n':
             print('Ciao!')
             logFile.info('Ciao!\n')
+            break
+        else:
+            print('It is wrong input, try again.')
+            logFile.info('It is wrong input, try again.\n')
+
+if len(images_to_delete) > 0:
+    while True:
+        see_list_to_delete = input('Do you want to see list of files to be deleted? y/n: ')
+        logFile.info('Do you want to see list of files to be deleted? y/n: \n')
+        if see_list_to_delete.lower() == 'y':
+            for item in images_to_delete:
+                print(item + ' will be deleted')
+            break
+        elif see_list_to_delete.lower() == 'n':
             break
         else:
             print('It is wrong input, try again.')
