@@ -136,7 +136,7 @@ def work_with_exif_data(exif, path_to_picture, file):
         print('Checking for duplicates...')
         logFile.info('Checking for duplicates...')
         # Check whether file already exactly that name that script wants to give it
-        if (supposed_name + '.jpg') == original_filename:
+        if (supposed_name + '.jpg').lower() == original_filename.lower():
             print('New name matches current name. This file has already been renamed.')
             logFile.info('New name matches current name. This file has already been renamed.')
             return None
@@ -173,7 +173,7 @@ def work_with_exif_data(exif, path_to_picture, file):
                 # Try to give it new name with next order number
                 while os.path.exists(os.path.join(path_to_existing_copy, supposed_name + '[{}].jpg'.format(counter))):
                     # Maybe there is already file with this name with order number
-                    if supposed_name + '[{}].jpg'.format(counter) == original_filename:
+                    if (supposed_name + '[{}].jpg'.format(counter)).lower() == original_filename.lower():
                         print('New name matches current name. This file has already been renamed.')
                         logFile.info('New name matches current name. This file has already been renamed.')
                         return None
