@@ -136,7 +136,7 @@ def work_with_exif_data(exif, path_to_picture, file):
         print('Checking for duplicates...')
         logFile.info('Checking for duplicates...')
         # Check whether file already exactly that name that script wants to give it
-        if (name_string + '.jpg') == original_filename:
+        if (supposed_name + '.jpg') == original_filename:
             print('New name matches current name. This file has already been renamed.')
             logFile.info('New name matches current name. This file has already been renamed.')
             return None
@@ -151,7 +151,7 @@ def work_with_exif_data(exif, path_to_picture, file):
             counter = 2
             # Check if it is possible to give to file a name with next order number
             while supposed_name + '[{}]'.format(counter) in list(name_strings.keys()):
-                logFile.info('New supposed name is "' + supposed_name + '"[{}].jpg"'.format(counter))
+                logFile.info('New supposed name is "' + supposed_name + '[{}].jpg"'.format(counter))
                 # Check if there is already the duplicate of this file
                 if binary_comparison(path_to_picture, name_strings[supposed_name + '[{}]'.format(counter)]):
                     return None
@@ -162,7 +162,6 @@ def work_with_exif_data(exif, path_to_picture, file):
         # Check whether file with the same new name already exists in folder (avoiding duplicates)
         if os.path.exists(os.path.join('\\'.join(path_to_picture.split('\\')[:-1]), supposed_name + '.jpg')):
             path_to_existing_copy = '\\'.join(path_to_picture.split('\\')[:-1])
-            # existing_copy = os.path.join('\\'.join(path_to_picture.split('\\')[:-1]), supposed_name + '.jpg')
             # Check if files are duplicates
             if binary_comparison(path_to_picture, os.path.join(path_to_existing_copy,  supposed_name + '.jpg')):
                 return None
@@ -179,13 +178,30 @@ def work_with_exif_data(exif, path_to_picture, file):
                         logFile.info('New name matches current name. This file has already been renamed.')
                         return None
                     new_supposed_name = os.path.join(path_to_existing_copy, supposed_name + '[{}].jpg'.format(counter))
-                    # while supposed_name + '[{}]'.format(counter) in list(name_strings.keys()):
-                    logFile.info('New supposed name is "' + supposed_name + '"[{}].jpg"'.format(counter))
+                    logFile.info('New supposed name is "' + supposed_name + '[{}].jpg"'.format(counter))
                     # To be on safe side check whether file to be renamed and file with this name that already
                     # exists are duplicates
                     if binary_comparison(path_to_picture, new_supposed_name):
                         return None
                     counter += 1
+
+                # Second check if supposed name hasn't been picked up already
+                if supposed_name + '[{}]'.format(counter) in list(name_strings.keys()):
+                    print('That name has already been picked up during this session.')
+                    logFile.info('That name has already been picked up during this session.')
+                    if binary_comparison(path_to_picture, name_strings[supposed_name + '[{}]'.format(counter)]):
+                        return None
+                    # counter = 2
+                    # Check if it is possible to give to file a name with next order number
+                    while supposed_name + '[{}]'.format(counter) in list(name_strings.keys()):
+                        logFile.info('New supposed name is "' + supposed_name + '[{}].jpg"'.format(counter))
+                        # Check if there is already the duplicate of this file
+                        if binary_comparison(path_to_picture, name_strings[supposed_name + '[{}]'.format(counter)]):
+                            return None
+                        counter += 1
+                    logFile.info('New supposed name is "' + supposed_name + '"[{}]"'.format(counter))
+                    # supposed_name = supposed_name + '[{}]'.format(counter)
+
                 logFile.info('New supposed name is "' + supposed_name + '"[{}]"'.format(counter))
                 supposed_name = supposed_name + '[{}]'.format(counter)
 
