@@ -132,13 +132,19 @@ def work_with_exif_data(exif, path_to_picture, file):
         # be named as someName[2].jpg, someName[3].jpg and so on. Function just keeps track of every name that app
         # is going to give to every file.
 
+        def already_has_this_name(name):
+            # Check whether file already has exactly this name that script wants to give it
+            if name.lower() == original_filename.lower():
+                print('New name matches current name. This file has already been renamed.')
+                logFile.info('New name matches current name. This file has already been renamed.')
+                return True
+            return False
+
         logFile.info('Supposed name is "{}.jpg"'.format(supposed_name))
         print('Checking for duplicates...')
         logFile.info('Checking for duplicates...')
-        # Check whether file already exactly that name that script wants to give it
-        if (supposed_name + '.jpg').lower() == original_filename.lower():
-            print('New name matches current name. This file has already been renamed.')
-            logFile.info('New name matches current name. This file has already been renamed.')
+
+        if already_has_this_name(supposed_name + '.jpg'):
             return None
 
         # Avoid giving the same names for photos that were taken during the same second
@@ -173,9 +179,7 @@ def work_with_exif_data(exif, path_to_picture, file):
                 # Try to give it new name with next order number
                 while os.path.exists(os.path.join(path_to_existing_copy, supposed_name + '[{}].jpg'.format(counter))):
                     # Maybe there is already file with this name with order number
-                    if (supposed_name + '[{}].jpg'.format(counter)).lower() == original_filename.lower():
-                        print('New name matches current name. This file has already been renamed.')
-                        logFile.info('New name matches current name. This file has already been renamed.')
+                    if already_has_this_name(supposed_name + '[{}].jpg'.format(counter)):
                         return None
                     new_supposed_name = os.path.join(path_to_existing_copy, supposed_name + '[{}].jpg'.format(counter))
                     logFile.info('New supposed name is "' + supposed_name + '[{}].jpg"'.format(counter))
@@ -199,10 +203,10 @@ def work_with_exif_data(exif, path_to_picture, file):
                         if binary_comparison(path_to_picture, name_strings[supposed_name + '[{}]'.format(counter)]):
                             return None
                         counter += 1
-                    logFile.info('New supposed name is "' + supposed_name + '"[{}]"'.format(counter))
+                    logFile.info('New supposed name is "' + supposed_name + '[{}]"'.format(counter))
                     # supposed_name = supposed_name + '[{}]'.format(counter)
 
-                logFile.info('New supposed name is "' + supposed_name + '"[{}]"'.format(counter))
+                logFile.info('New supposed name is "' + supposed_name + '[{}]"'.format(counter))
                 supposed_name = supposed_name + '[{}]'.format(counter)
 
         return supposed_name
