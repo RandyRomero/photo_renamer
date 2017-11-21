@@ -132,7 +132,7 @@ def work_with_exif_data(exif, path_to_picture, file):
         # be named as someName[2].jpg, someName[3].jpg and so on. Function just keeps track of every name that app
         # is going to give to every file.
 
-        counter = 2
+        counter = 1
 
         def already_has_this_name(name):
             # Check whether file already has exactly this name that script wants to give it
@@ -142,7 +142,7 @@ def work_with_exif_data(exif, path_to_picture, file):
                 return True
             return False
 
-        def check_if_was_picked_up_already(name, name_with_counter):
+        def get_new_order_name(name, name_with_counter):
             # Avoid giving the same names for photos that were taken during the same second
             # Also avoid giving new order names to duplicates instead of ignoring them
             nonlocal counter
@@ -152,23 +152,21 @@ def work_with_exif_data(exif, path_to_picture, file):
             if not name_with_counter:
                 name_with_counter = name
 
-            if name_with_counter in list(name_strings.keys()):
-                print('That name has already been picked up during this session.')
-                logFile.info('That name has already been picked up during this session.')
-                if binary_comparison(path_to_picture, name_strings[name_with_counter]):
-                    return None
+            print('That name has already been picked up during this session.')
+            logFile.info('That name has already been picked up during this session.')
+            if binary_comparison(path_to_picture, name_strings[name_with_counter]):
+                return None
 
-                # Check if it is possible to give to file a name with next order number
-                while name + '[{}]'.format(counter) in list(name_strings.keys()):
-                    logFile.info('New supposed name is "' + name + '[{}].jpg"'.format(counter))
-                    # Check if there is already the duplicate of this file
-                    if binary_comparison(path_to_picture, name_strings[name + '[{}]'.format(counter)]):
-                        return None
-                    counter += 1
-                logFile.info('New supposed name is "' + name + '"[{}]"'.format(counter))
-                return name + '[{}]'.format(counter)
-            else:
-                return name
+            # Check if it is possible to give to file a name with next order number
+            counter += 1
+            while name + '[{}]'.format(counter) in list(name_strings.keys()):
+                logFile.info('New supposed name is "' + name + '[{}].jpg"'.format(counter))
+                # Check if there is already the duplicate of this file
+                if binary_comparison(path_to_picture, name_strings[name + '[{}]'.format(counter)]):
+                    return None
+                counter += 1
+            logFile.info('New supposed name is "' + name + '[{}]"'.format(counter))
+            return name + '[{}]'.format(counter)
 
         logFile.info('Supposed name is "{}.jpg"'.format(supposed_name))
         print('Checking for duplicates...')
@@ -177,9 +175,10 @@ def work_with_exif_data(exif, path_to_picture, file):
         if already_has_this_name(supposed_name + '.jpg'):
             return None
 
-        supposed_name = check_if_was_picked_up_already(supposed_name, None)
-        if not supposed_name:
-            return None
+        if supposed_name in list(name_strings.keys()):
+            supposed_name = get_new_order_name(supposed_name, None)
+            if not supposed_name:
+                return None
 
         # Check whether file with the same new name already exists in folder (avoiding duplicates)
         if os.path.exists(os.path.join('\\'.join(path_to_picture.split('\\')[:-1]), supposed_name + '.jpg')):
@@ -206,13 +205,15 @@ def work_with_exif_data(exif, path_to_picture, file):
                     counter += 1
 
                 # Second check if supposed name hasn't been picked up already
-                supposed_name = check_if_was_picked_up_already(supposed_name,
-                                                               supposed_name + '[{}]'.format(counter))
-                if not supposed_name:
-                    return None
-
-                logFile.info('New supposed name is "' + supposed_name + '[{}]"'.format(counter))
-                supposed_name = supposed_name + '[{}]'.format(counter)
+                if supposed_name + '[{}]'.format(counter) in list(name_strings.keys()):
+                    supposed_name = get_new_order_name(supposed_name, supposed_name + '[{}]'.format(counter))
+                    if not supposed_name:
+                        return None
+                    logFile.info('New supposed name is "' + supposed_name + '[{}]"'.format(counter))
+                    return supposed_name
+                else:
+                    logFile.info('New supposed name is "' + supposed_name + '[{}]"'.format(counter))
+                    supposed_name = supposed_name + '[{}]'.format(counter)
 
         return supposed_name
 
@@ -262,12 +263,6 @@ def work_with_exif_data(exif, path_to_picture, file):
     # Replace not allowed characters before calling function
     name_string = remove_repeated_words(name_string.replace(':', '-').replace('/', ''))
     name_string = name_string[:-1]
-
-    # logConsole.debug(path_to_picture)
-    # if path_to_picture == r'C:\ya.disk\YandexDisk\Photo_2017\[01] January\2017-01-01 01-08-55.JPG':
-    #     logFile.debug('how this file is not on folder?')
-    #     logConsole.debug('how this file is not on folder?')
-    # logConsole.debug(os.path.join('\\'.join(path_to_picture.split('\\')[:-1]), name_string + '.jpg'))
 
     new_name = check_duplicates(name_string)
     if new_name is not None:
