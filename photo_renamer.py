@@ -21,38 +21,40 @@ It was developed and tested under Windows 10 64 bit with Python 3.6.2.
 import os
 import shelve
 import exifread  # library to get exif data from file
-import handle_logs
+import handle_logs # separate file for setting up logging to console and log file
 from send2trash import send2trash
-import sys
 
+# setting up loggers
 logFile, logConsole = handle_logs.set_loggers()
 handle_logs.clean_log_folder(20, logFile, logConsole)
 logFile.info('Program has started')
 
 images_with_info = []  # List of all images with their info from exif
 images_to_delete = []  # list of superfluous copies to remove
-name_strings = {}
-perm_denied_files = []
+name_strings = {} # Dict where key is a final new name of a photo and values is a full path to this photo
+perm_denied_files = [] # Files that script could not rename because it was locked by OS
 
 
 def process_files(path_with_images):
-    # Search for photos, open them and extract exif info
+    # Recursively search for photos and extract exif info
 
-    image_extension = ('.jpg', '.jpeg')
+    image_extension = ('.jpg', '.jpeg')  # Files with only these extensions will be processed
 
     for root, subfolders, files in os.walk(path_with_images):
         for file in files:
             if file.lower().endswith(image_extension):
                 with open(os.path.join(root, file), 'rb') as f:
-                    # details=False to avoid extracting superfluous data from EXIF and overflowing memory
+                    # 'details=False' to avoid extracting superfluous data from EXIF and overflowing memory
                     tags = exifread.process_file(f, details=False)
                     path_to_image = os.path.join(root, file)
-                    data = work_with_exif_data(tags, path_to_image, file)
+                    data = get_new_name_for_photo(tags, path_to_image, file)
                     if data != -1:
                         images_with_info.append(data)
 
 
 def open_db():
+    # Open database which contains informations how different tags from exif rename to normal names
+    # e.g 'NIKON CORPORATION' to 'Nikon' or 'chiron' to 'Mi MIx 2'
     if not os.path.exists('db'):
         os.mkdir('db')
     shelve_db = shelve.open('db\\tags_db')
@@ -63,23 +65,25 @@ def open_db():
     return shelve_db
 
 
-def work_with_exif_data(exif, path_to_picture, file):
+def get_new_name_for_photo(exif, path_to_picture, file):
 
     """
-    Gather info about image and make a string with it
+    Takes exif info of one page, covert it to appropriate name by the template, check if there are some duplicates
 
-    :param file: of file to compare with new name to avoid creating of copies of the same files
-    :param exif: full exif data from current file
+    :param file: file name to compare with new name to avoid creating copies of the same file
+    :param exif: exif data from current file
     :param path_to_picture: full path to picture
-    :return: list where first item is path to picture and the second is string with new name for picture
+    :return: list where first item is path to picture and the second is string with new name for picture OR
+    returns -1 if file will be renamed
     """
 
     def check_tag(tag, tag_type):
         """
-        Function to look up for name of camera and lens in database. If it is not in db, function asks user whether
-        to use name from EXIF data or give tag a new name to use it for renaming of files"
+        Function that compare name of camera and lens in database and in EXIF data.
+        If it is not in db, function asks user whether to use name from EXIF data or give tag a
+        new name to use it for renaming of photo. It will then store this new name in database to use it next time.
 
-        :param tag: name of component form EXIF
+        :param tag: name of component from EXIF
         :param tag_type: tape of tag e.g. camera brand, camera model, lens brand, lens model
         :return: name to use for renaming of file
         """
@@ -91,10 +95,10 @@ def work_with_exif_data(exif, path_to_picture, file):
             logFile.info('Do you want ' + tag_type + ' to be named ' + tag + '? y/n: ' + user_answer)
             while True:
                 if user_answer == 'y':
-                    # Is user wants to use exact name from EXIF - save it in db and return it for renaming
+                    # Is user wants to use exact name from EXIF — save it in db and return it for renaming
                     db[tag] = tag
                     return tag
-                elif user_answer == 'n':  # If user wants to use another name, let him put it in
+                elif user_answer == 'n':  # If user wants to use another name, let him key it in
                     sure = 'n'
                     while sure == 'n':
                         db_tag = input('Please, type new name for ' + tag_type + ' instead of ' + tag + ': ')
@@ -114,20 +118,30 @@ def work_with_exif_data(exif, path_to_picture, file):
                     print('Wrong input. You need to type y or n.')
                     continue
 
-    def remove_repeated_words(camera_info):
-        # Remove name of brand or whatever if it is mentioned more than one time
+    def remove_repeated_words(camera_info_string):
+        """
+        Remove name of brand or whatever if it is mentioned more than one time
 
-        words_object = []
+        :param camera_info_string: string like "date_time camera_brand camera_model lens_brand lens_model"
+        :return: string without words that are used more than once
+        """
+
+        words_array = []
         # Dedupe string
-        for item in camera_info.split(' '):
-            if item not in words_object:
-                words_object.append(item)
+        for item in camera_info_string.split(' '):
+            if item not in words_array:
+                words_array.append(item)
 
         # Convert back to string from list and return
-        return ' '.join(words_object)
+        return ' '.join(words_array)
 
     def binary_comparison(current_photo, processed_photo):
-        # Check whether two photos are binary equal
+        """
+        Check whether two photos are totally equal
+        :param current_photo: full path to picture for which script tries to come up with a new name
+        :param processed_photo: full path of picture that can be possibly a duplicate of a current photo
+        :return: True or False
+        """
         with open(current_photo, 'rb') as a:
             with open(processed_photo, 'rb') as b:
                 if a.read() == b.read():
@@ -135,6 +149,7 @@ def work_with_exif_data(exif, path_to_picture, file):
                     print('You can delete this extra copy later in this program.')
                     logFile.info('DUPLICATE: "{}" already exists here as "{}"'.format(current_photo, processed_photo))
                     logFile.info('You can delete this extra copy later in this program.')
+                    # That list will be used to show user files to be deleted and to send them to trash bin recursively
                     images_to_delete.append(path_to_picture)
                     return True
                 else:
@@ -142,11 +157,22 @@ def work_with_exif_data(exif, path_to_picture, file):
                     return False
 
     def check_duplicates(supposed_name):
-        # Function checks whether file is going to get unique name after renaming.
-        # If there is more than one file with this name (usually because of burst shooting) these file should
-        # be named as someName[2].jpg, someName[3].jpg and so on. Function just keeps track of every name that app
-        # is going to give to every file.
+        """
+        That was most hard function for me.
+        Function checks whether file is going to get unique name after renaming.
+        If there is more than one file with this name (usually because of burst shooting) these file should
+        be named as someName[2].jpg, someName[3].jpg and so on. Function just keeps track of every name that app
+        is going to give to every file.
+        This function maybe doesn't look very elegant, but I did my best and at least it works write.
 
+        :param supposed_name: string with name that script wants to give to a photo
+        :return: it either returns new name according to existing duplicates (is any) or returns None if current photo
+        ia a duplicate or has been salready renamed
+
+        """
+
+        # Counter which increases every time there is a duplicate for current photo.
+        # It will be added to the end of the photo name if it is > 1
         counter = 1
 
         def already_has_this_name(name):
