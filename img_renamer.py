@@ -220,7 +220,6 @@ def work_with_exif_data(exif, path_to_picture, file):
     original_filename = file
     one_image_with_info = []  # All info about image in list form
     date_time = str(exif.get('EXIF DateTimeOriginal', None))  # Get date when picture was shot
-
     if date_time == 'None':  # If there is no date and time - exit function
         print(path_to_picture + ' --- there is no EXIF data.\n')
         logFile.info(path_to_picture + ' --- there is no EXIF data.\n')
