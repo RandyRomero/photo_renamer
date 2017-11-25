@@ -101,7 +101,7 @@ def get_new_name_for_photo(exif, path_to_picture, file):
                 elif user_answer == 'n':  # If user wants to use another name, let him key it in
                     sure = 'n'
                     while sure == 'n':
-                        db_tag = input('Please, type new name for ' + tag_type + ' instead of ' + tag + ': ')
+                        db_tag = input('Please, type new name for ' + tag_type + ' instead of ' + tag + ': ').strip()
                         logFile.info('Please, type new name for ' + tag_type + ' instead of ' + tag + ': ' + db_tag)
 
                         sure = input('Are you sure you wanna use ' + db_tag + ' for ' + tag_type +
@@ -296,16 +296,16 @@ def get_new_name_for_photo(exif, path_to_picture, file):
 
     # Check if we have more appropriate name in database for every tag
     if camera_brand != 'None':
-        camera_brand = check_tag(camera_brand, 'camera_brand')
+        camera_brand = check_tag(camera_brand, 'camera_brand').strip()
 
     if camera_model != 'None':
-        camera_model = check_tag(camera_model, 'camera_model')
+        camera_model = check_tag(camera_model, 'camera_model').strip()
 
     if lens_brand != 'None':
-        lens_brand = check_tag(lens_brand, 'lens_brand')
+        lens_brand = check_tag(lens_brand, 'lens_brand').strip()
 
     if lens_model != 'None':
-        lens_model = check_tag(lens_model, 'lens_model')
+        lens_model = check_tag(lens_model, 'lens_model').strip()
 
     # Make string 'name_string' out of photo date, camera model etc and put it in one list with path
     # Example of name_string after loop:
@@ -316,8 +316,7 @@ def get_new_name_for_photo(exif, path_to_picture, file):
             name_string += entry + ' '
 
     # Replace not allowed characters before calling function
-    name_string = remove_repeated_words(name_string.replace(':', '-').replace('/', ''))
-    name_string = name_string[:-1]
+    name_string = remove_repeated_words(name_string.replace(':', '-').replace('/', '')).strip()
 
     new_name = check_duplicates(name_string)
     if new_name is not None:
