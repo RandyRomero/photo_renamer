@@ -40,16 +40,15 @@ def process_files(path_with_images):
 
     image_extension = ('.jpg', '.jpeg')  # Files with only these extensions will be processed
 
-    for root, subfolders, files in os.walk(path_with_images):
-        for file in files:
-            if file.lower().endswith(image_extension):
-                with open(os.path.join(root, file), 'rb') as f:
-                    # 'details=False' to avoid extracting superfluous data from EXIF and overflowing memory
-                    tags = exifread.process_file(f, details=False)
-                    path_to_image = os.path.join(root, file)
-                    data = get_new_name_for_photo(tags, path_to_image, file)
-                    if data != -1:
-                        images_with_info.append(data)
+    for filename in os.listdir(path_with_images):
+        if filename.lower().endswith(image_extension):
+            with open(os.path.join(path_with_images, filename), 'rb') as f:
+                # 'details=False' to avoid extracting superfluous data from EXIF and overflowing memory
+                tags = exifread.process_file(f, details=False)
+                path_to_image = os.path.join(path_with_images, filename)
+                data = get_new_name_for_photo(tags, path_to_image, filename)
+                if data != -1:
+                    images_with_info.append(data)
 
 
 def open_db():
@@ -65,12 +64,12 @@ def open_db():
     return shelve_db
 
 
-def get_new_name_for_photo(exif, path_to_picture, file):
+def get_new_name_for_photo(exif, path_to_picture, original_filename):
 
     """
     Takes exif info of one page, covert it to appropriate name by the template, check if there are some duplicates
 
-    :param file: file name to compare with new name to avoid creating copies of the same file
+    :param original_filename: file name to compare with new name to avoid creating copies of the same file
     :param exif: exif data from current file
     :param path_to_picture: full path to picture
     :return: list where first item is path to picture and the second is string with new name for picture OR
@@ -128,9 +127,9 @@ def get_new_name_for_photo(exif, path_to_picture, file):
 
         words_array = []
         # Dedupe string
-        for item in camera_info_string.split(' '):
-            if item not in words_array:
-                words_array.append(item)
+        for one_item in camera_info_string.split(' '):
+            if one_item not in words_array:
+                words_array.append(one_item)
 
         # Convert back to string from list and return
         return ' '.join(words_array)
@@ -271,7 +270,6 @@ def get_new_name_for_photo(exif, path_to_picture, file):
 
         return supposed_name
 
-    original_filename = file
     one_image_with_info = []  # All info about image in list form
     date_time = str(exif.get('EXIF DateTimeOriginal', None))  # Get date when picture was shot
     if date_time == 'None':  # If there is no date and time - exit function
@@ -372,6 +370,7 @@ def rename_photos():
                 print(item[0] + ': ERROR: Permission denied.')
                 logFile.info(item[0] + ': ERROR: Permission denied.\n')
                 perm_denied_files.append(item[0])
+
 
 print('Hello! This script can help you to automatically rename your photos (jpg files) from whatever name they have to'
       ' name like Date and time of creation + camera nad lens. For example: '
