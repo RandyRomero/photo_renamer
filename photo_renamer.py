@@ -90,9 +90,9 @@ def get_new_name_for_photo(exif, path_to_picture, original_filename):
         if db_tag:  # If yes, use it to rename file
             return db_tag
         else:  # If not, ask user how to call it instead
-            user_answer = input('Do you want ' + tag_type + ' to be named ' + tag + '? y/n: ').lower()
-            logFile.info('Do you want ' + tag_type + ' to be named ' + tag + '? y/n: ' + user_answer)
             while True:
+                user_answer = input('Do you want ' + tag_type + ' to be named ' + tag + '? y/n: ').lower()
+                logFile.info('Do you want ' + tag_type + ' to be named ' + tag + '? y/n: ' + user_answer)
                 if user_answer == 'y':
                     # Is user wants to use exact name from EXIF — save it in db and return it for renaming
                     db[tag] = tag
