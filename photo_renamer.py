@@ -33,6 +33,7 @@ images_with_info = []  # List of all images with their info from exif
 images_to_delete = []  # list of superfluous copies to remove
 name_strings = {}  # Dict where key is a final new name of a photo and values is a full path to this photo
 perm_denied_files = []  # Files that script could not rename because it was locked by OS
+unknown_camera = ''
 
 
 def process_files(path_with_images):
@@ -75,6 +76,7 @@ def get_new_name_for_photo(exif, path_to_picture, original_filename):
     :return: list where first item is path to picture and the second is string with new name for picture OR
     returns -1 if file will be renamed
     """
+    global unknown_camera
 
     def check_tag(tag, tag_type):
         """
@@ -86,10 +88,10 @@ def get_new_name_for_photo(exif, path_to_picture, original_filename):
         :param tag_type: tape of tag e.g. camera brand, camera model, lens brand, lens model
         :return: name to use for renaming of file
         """
-        db_tag = db.get(tag)  # Check whether tag already exists in database
-        if db_tag:  # If yes, use it to rename file
-            return db_tag
-        else:  # If not, ask user how to call it instead
+        def rename_and_save():
+            # nonlocal tag
+            nonlocal db_tag
+
             while True:
                 user_answer = input('Do you want ' + tag_type + ' to be named ' + tag + '? y/n: ').lower()
                 logFile.info('Do you want ' + tag_type + ' to be named ' + tag + '? y/n: ' + user_answer)
@@ -116,6 +118,43 @@ def get_new_name_for_photo(exif, path_to_picture, original_filename):
                 else:
                     print('Wrong input. You need to type y or n.')
                     continue
+
+        def rename_not_save():
+            nonlocal tag
+
+            while True:
+                user_answer = input('Do you want your camera to be named "Unknown camera"? y/n: ').lower()
+                logFile.info('Do you want your camera to be named "Unknown camera"? y/n: ' + user_answer)
+                if user_answer == 'y':
+                    tag = 'Unknown camera'
+                    # Is user wants to use exact name from EXIF — save it in db and return it for renaming
+                    return tag
+                elif user_answer == 'n':  # If user wants to use another name, let him key it in
+                    sure = 'n'
+                    while sure == 'n':
+                        new_tag = input('Please, type in brand of your camera: ').strip()
+                        logFile.info('Please, type in brand of your camera: : ' + tag)
+
+                        sure = input('Are you sure you wanna name your camera ' + new_tag + '? y/n: ').lower()
+                        logFile.info('Are you sure you wanna name your camera ' + new_tag + '? y/n: ' + sure)
+                        if sure == 'y':
+                            print('Gotcha.')
+                            tag = new_tag
+                            return tag
+                        else:
+                            continue
+                else:
+                    print('Wrong input. You need to type y or n.')
+                    continue
+
+        db_tag = db.get(tag, None)  # Check whether tag already exists in database
+        if db_tag:  # If yes, use it to rename file
+            return db_tag
+
+        elif not db_tag and tag:  # If not, ask user how to call it instead
+            return rename_and_save()
+        elif not tag and tag_type == 'camera_brand':
+            return rename_not_save()
 
     def remove_repeated_words(camera_info_string):
         """
@@ -278,10 +317,10 @@ def get_new_name_for_photo(exif, path_to_picture, original_filename):
         return -1
 
     # Get necessary tags from EXIF data
-    camera_brand = str(exif.get('Image Make')).strip()
-    camera_model = str(exif.get('Image Model')).strip()
-    lens_brand = str(exif.get('EXIF LensMake')).strip()
-    lens_model = str(exif.get('EXIF LensModel')).strip()
+    camera_brand = str(exif.get('Image Make', '')).strip()
+    camera_model = str(exif.get('Image Model', '')).strip()
+    lens_brand = str(exif.get('EXIF LensMake', '')).strip()
+    lens_model = str(exif.get('EXIF LensModel', '')).strip()
 
     # Show to user raw data from EXIF
     print('\nRaw data from ' + path_to_picture)
@@ -293,16 +332,25 @@ def get_new_name_for_photo(exif, path_to_picture, original_filename):
                  .format(date_time, camera_brand, camera_model, lens_brand, lens_model))
 
     # Check if we have more appropriate name in database for every tag
-    if camera_brand != 'None':
+    if camera_brand:
         camera_brand = check_tag(camera_brand, 'camera_brand').strip()
 
-    if camera_model != 'None':
+    # If camera brand is empty string in EXIF, we ask user to give a name for this camera, but only one in a session
+    # Next time we just pick this name from the global variable. But un the same time we don't store it permanently
+    # in database
+    elif not camera_brand and not unknown_camera:
+        camera_brand = check_tag(camera_brand, 'camera_brand').strip()
+        unknown_camera = camera_brand
+    else:
+        camera_brand = unknown_camera
+
+    if camera_model:
         camera_model = check_tag(camera_model, 'camera_model').strip()
 
-    if lens_brand != 'None':
+    if lens_brand:
         lens_brand = check_tag(lens_brand, 'lens_brand').strip()
 
-    if lens_model != 'None':
+    if lens_model:
         lens_model = check_tag(lens_model, 'lens_model').strip()
 
     # Make string 'name_string' out of photo date, camera model etc and put it in one list with path
@@ -310,7 +358,7 @@ def get_new_name_for_photo(exif, path_to_picture, original_filename):
     # 2015:06:13 15:20:32 Canon Canon EOS 60D 17-50mm
     name_string = ''
     for entry in [date_time, camera_brand, camera_model, lens_brand, lens_model]:
-        if entry != 'None':
+        if entry:
             name_string += entry + ' '
 
     # Replace not allowed characters before calling function
