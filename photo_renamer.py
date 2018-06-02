@@ -57,7 +57,7 @@ def open_db():
     # e.g 'NIKON CORPORATION' to 'Nikon' or 'chiron' to 'Mi MIx 2'
     if not os.path.exists('db'):
         os.mkdir('db')
-    shelve_db = shelve.open('db\\tags_db')
+    shelve_db = shelve.open(os.path.join('db', 'tags_db'))
     shelve_db['test'] = 'database ok'
     if shelve_db['test']:
         logConsole.debug('Database ok')
@@ -273,8 +273,8 @@ def get_new_name_for_photo(exif, path_to_picture, original_filename):
                 return None
 
         # Check whether file with the same new name already exists in folder (avoiding duplicates)
-        if os.path.exists(os.path.join('\\'.join(path_to_picture.split('\\')[:-1]), supposed_name + '.jpg')):
-            path_to_existing_copy = '\\'.join(path_to_picture.split('\\')[:-1])
+        if os.path.exists(os.path.join(os.path.dirname(path_to_picture), supposed_name + '.jpg')):
+            path_to_existing_copy = os.path.join(os.path.dirname(path_to_picture))
             # Check if files are duplicates
             if binary_comparison(path_to_picture, os.path.join(path_to_existing_copy,  supposed_name + '.jpg')):
                 return None
@@ -344,14 +344,11 @@ def get_new_name_for_photo(exif, path_to_picture, original_filename):
     else:
         camera_brand = unknown_camera
 
-    if camera_model:
-        camera_model = check_tag(camera_model, 'camera_model').strip()
+    camera_model = check_tag(camera_model, 'camera_model').strip() if camera_model else camera_model
 
-    if lens_brand:
-        lens_brand = check_tag(lens_brand, 'lens_brand').strip()
+    lens_brand = check_tag(lens_brand, 'lens_brand').strip() if lens_brand else lens_brand
 
-    if lens_model:
-        lens_model = check_tag(lens_model, 'lens_model').strip()
+    lens_model = check_tag(lens_model, 'lens_model').strip() if lens_model else lens_model
 
     # Make string 'name_string' out of photo date, camera model etc and put it in one list with path
     # Example of name_string after loop:
@@ -403,8 +400,8 @@ def rename_photos():
     :return: doesn't get or return anything
     """
     for item in images_with_info:
-        # Remove current name of file from full path to file and add new name to path
-        new_name = os.path.join('\\'.join(item[0].split('\\')[:-1]), item[1])
+        # Remove current name of file from full path to file and add a new name to path
+        new_name = os.path.join(os.path.dirname(item[0]), item[1])
 
         if os.path.exists(new_name + '.jpg'):
             print('Error! File already exists')
