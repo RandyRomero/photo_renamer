@@ -331,24 +331,25 @@ def get_new_name_for_photo(exif, path_to_picture, original_filename):
     logFile.info('DateTime: {} Camera brand: {} Camera model: {} Lens brand: {} Lens model: {}'
                  .format(date_time, camera_brand, camera_model, lens_brand, lens_model))
 
-    # Check if we have more appropriate name in database for every tag
-    if camera_brand:
-        camera_brand = check_tag(camera_brand, 'camera_brand').strip()
+    if camera_brand + camera_model + lens_brand + lens_model != '':
+        # Check if we have more appropriate name in database for every tag
+        if camera_brand:
+            camera_brand = check_tag(camera_brand, 'camera_brand').strip()
 
-    # If camera brand is empty string in EXIF, we ask user to give a name for this camera, but only one in a session
-    # Next time we just pick this name from the global variable. But un the same time we don't store it permanently
-    # in database
-    elif not camera_brand and not unknown_camera:
-        camera_brand = check_tag(camera_brand, 'camera_brand').strip()
-        unknown_camera = camera_brand
-    else:
-        camera_brand = unknown_camera
+        # If camera brand is empty string in EXIF, we ask user to give a name for this camera, but for a session
+        # Next time we just pick this name from the global variable. But un the same time we don't store it permanently
+        # in database
+        elif not camera_brand and not unknown_camera:
+            camera_brand = check_tag(camera_brand, 'camera_brand').strip()
+            unknown_camera = camera_brand
+        else:
+            camera_brand = unknown_camera
 
-    camera_model = check_tag(camera_model, 'camera_model').strip() if camera_model else camera_model
+        camera_model = check_tag(camera_model, 'camera_model').strip() if camera_model else camera_model
 
-    lens_brand = check_tag(lens_brand, 'lens_brand').strip() if lens_brand else lens_brand
+        lens_brand = check_tag(lens_brand, 'lens_brand').strip() if lens_brand else lens_brand
 
-    lens_model = check_tag(lens_model, 'lens_model').strip() if lens_model else lens_model
+        lens_model = check_tag(lens_model, 'lens_model').strip() if lens_model else lens_model
 
     # Make string 'name_string' out of photo date, camera model etc and put it in one list with path
     # Example of name_string after loop:
