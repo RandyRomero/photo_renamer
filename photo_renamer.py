@@ -14,12 +14,15 @@ In case there are several files with the same date of shooting,
 script will add [next number] to the end of the file name.
 Script can also detect duplicates with other names and that's really useful sometimes.
 It will offer you to remove them.
+If case there is no useful exif data in photo script will add "(no data)" to its name. And won't process files
+with this mark then.
 
 It was developed and tested under Windows 10 64 bit with Python 3.6.2.
 """
 
 import os
 import shelve
+import re
 import exifread  # library to get exif data from file
 import handle_logs  # separate file for setting up logging to console and log file
 from send2trash import send2trash
@@ -31,6 +34,7 @@ logFile.info('Program has started')
 
 images_with_info = []  # List of all images with their info from exif
 images_to_delete = []  # list of superfluous copies to remove
+images_no_exif_mark = 0  # counter of images that the script won't even open
 name_strings = {}  # Dict where key is a final new name of a photo and values is a full path to this photo
 perm_denied_files = []  # Files that script could not rename because it was locked by OS
 unknown_camera = ''
@@ -39,10 +43,22 @@ unknown_camera = ''
 def process_files(path_with_images):
     # Recursively search for photos and extract exif info
 
+    global images_no_exif_mark
+
     image_extension = ('.jpg', '.jpeg')  # Files with only these extensions will be processed
 
     for filename in os.listdir(path_with_images):
         if filename.lower().endswith(image_extension):
+
+            # If filename has special "no exif" mark - don't even open it, just count and skip
+            if re.search(r'\(no exif\)', filename):
+                msg = ('{} has "no exif" mark thereby ' 
+                       'it will not be processed.'.format(os.path.join(path_with_images, filename)))
+                print(msg)
+                logFile.info(msg)
+                images_no_exif_mark += 1
+                continue
+
             with open(os.path.join(path_with_images, filename), 'rb') as f:
                 # 'details=False' to avoid extracting superfluous data from EXIF and overflowing memory
                 tags = exifread.process_file(f, details=False)
@@ -74,7 +90,7 @@ def get_new_name_for_photo(exif, path_to_picture, original_filename):
     :param exif: exif data from current file
     :param path_to_picture: full path to picture
     :return: list where first item is path to picture and the second is string with new name for picture OR
-    returns -1 if file will be renamed
+    returns -1 if file will not be renamed
     """
     global unknown_camera
 
@@ -318,7 +334,10 @@ def get_new_name_for_photo(exif, path_to_picture, original_filename):
     if date_time == '':  # If there is no date and time - exit function
         print(path_to_picture + ' --- there is no EXIF data.\n')
         logFile.info(path_to_picture + ' --- there is no EXIF data.\n')
-        return -1
+        original_filename = original_filename[:-4] + ' (no exif)'
+        one_image_with_info.extend([path_to_picture, original_filename])
+        return one_image_with_info
+        # return -1
 
     # Get necessary tags from EXIF data
     camera_brand = str(exif.get('Image Make', '')).strip()
@@ -367,10 +386,10 @@ def get_new_name_for_photo(exif, path_to_picture, original_filename):
     name_string = remove_repeated_words(name_string.replace(':', '-').replace('/', '')).strip()
 
     new_name = check_duplicates(name_string)
-    if new_name is not None:
-        name_string = new_name
-    else:
+    if not new_name:
         return -1
+
+    name_string = new_name
 
     one_image_with_info.extend([path_to_picture, name_string])
 
@@ -447,6 +466,9 @@ while True:
         print('This path doesn\'t exist. Try another one')
         continue
 
+if images_no_exif_mark > 0:
+    print('Attention. There are {} images with "no exif" mark. They will not be processed.'.format(images_no_exif_mark))
+
 if len(images_with_info) > 0:
     while True:
         see_rename_list_or_not = input('Do you want to see list of files to be renamed? y/n: ')
@@ -506,8 +528,8 @@ if len(images_to_delete) > 0:
             logFile.info('It is wrong input, try again.\n')
 
 if len(perm_denied_files) > 0:
-    print(str(len(perm_denied_files)) + ' files was skipped because OS denied permission.')
-    logFile.info(str(len(perm_denied_files)) + ' files was skipped because OS denied permission.\n')
+    print(str(len(perm_denied_files)) + ' files were skipped because OS denied permission.')
+    logFile.info(str(len(perm_denied_files)) + ' files were skipped because OS denied permission.\n')
     print('There are these files: ')
     for item in perm_denied_files:
         print(item)
