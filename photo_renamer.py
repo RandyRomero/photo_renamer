@@ -25,6 +25,7 @@ import shelve
 import re
 import exifread  # library to get exif data from file
 import handle_logs  # separate file for setting up logging to console and log file
+from datetime import datetime
 from send2trash import send2trash
 
 # setting up loggers
@@ -327,17 +328,30 @@ def get_new_name_for_photo(exif, path_to_picture, original_filename):
 
     one_image_with_info = []  # All info about image in list form
 
-    # Get date when picture was shot
+    # Get date of when picture was shot
     date_time = (str(exif.get('EXIF DateTimeOriginal', '')) or str(exif.get('EXIF DateTimeDigitized', '')) or
                  str(exif.get('Image DateTime', '')))
 
-    if date_time == '':  # If there is no date and time - exit function
+    if date_time == '':  # If there is no date and time in EXIF
         print(path_to_picture + ' --- there is no EXIF data.\n')
         logFile.info(path_to_picture + ' --- there is no EXIF data.\n')
-        original_filename = original_filename[:-4] + ' (no exif)'
+
+        #  if file mame matches pattern like 22-04-05_1304 -> rename it to pattern like 2005-04-22 13-04
+        match = re.match(r'(\d\d-\d\d-\d\d)_(\d{4})', original_filename)
+        if match:
+            original_filename = datetime.strptime(match.group(0), '%d-%m-%y_%H%M').strftime('%Y-%m-%d %H-%M')
+
+        # Add "(no exif)" mark in order to know in advance there is no EXIF in photo in order not to spend time on
+        # opening it next time
+        if original_filename.lower().endswith('.jpg'):
+            original_filename = original_filename[:-4] + ' (no exif)'
+        elif original_filename.lower().endswith('.jpeg'):
+            original_filename = original_filename[:-5] + ' (no exif)'
+        else:
+            original_filename = original_filename + ' (no exif)'
+
         one_image_with_info.extend([path_to_picture, original_filename])
         return one_image_with_info
-        # return -1
 
     # Get necessary tags from EXIF data
     camera_brand = str(exif.get('Image Make', '')).strip()

@@ -15,5 +15,6 @@ Script can also detect duplicates with other names and that's really usefull som
 If case there is no useful exif data in photo script will add "(no data)" to its name. And won't process files
 with this mark then. 
 
+if file mame matches pattern like 22-04-05_1304 -> rename it to pattern like 2005-04-22 13-04
 
 It was developed and tested under Windows 10 64 bit with Python 3.6.2.
