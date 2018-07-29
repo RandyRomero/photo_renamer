@@ -17,14 +17,15 @@ It will offer you to remove them.
 If case there is no useful exif data in photo script will add "(no data)" to its name. And won't process files
 with this mark then.
 
-It was developed and tested under Windows 10 64 bit with Python 3.6.2.
+It was tested under Windows 10 64 bit and Ubuntu 16.04 with Python 3.6
 """
 
 import os
 import shelve
 import re
 import exifread  # library to get exif data from file
-import handle_logs  # separate file for setting up logging to console and log file
+import handle_logs  # a separate file for setting up logging to console and log file
+import time
 from datetime import datetime
 from send2trash import send2trash
 
@@ -33,56 +34,11 @@ logFile, logConsole = handle_logs.set_loggers()
 handle_logs.clean_log_folder(20, logFile, logConsole)
 logFile.info('Program has started')
 
-images_with_info = []  # List of all images with their info from exif
-images_to_delete = []  # list of superfluous copies to remove
-images_no_exif_mark = 0  # counter of images that the script won't even open
-name_strings = {}  # Dict where key is a final new name of a photo and values is a full path to this photo
-perm_denied_files = []  # Files that script could not rename because it was locked by OS
+images_to_delete = []  # list of superfluous copies to remove (really hard to make it local)
 unknown_camera = ''
 
 
-def process_files(path_with_images):
-    # Recursively search for photos and extract exif info
-
-    global images_no_exif_mark
-
-    image_extension = ('.jpg', '.jpeg')  # Files with only these extensions will be processed
-
-    for filename in os.listdir(path_with_images):
-        if filename.lower().endswith(image_extension):
-
-            # If filename has special "no exif" mark - don't even open it, just count and skip
-            if re.search(r'\(no exif\)', filename):
-                msg = ('{} has "no exif" mark thereby ' 
-                       'it will not be processed.'.format(os.path.join(path_with_images, filename)))
-                print(msg)
-                logFile.info(msg)
-                images_no_exif_mark += 1
-                continue
-
-            with open(os.path.join(path_with_images, filename), 'rb') as f:
-                # 'details=False' to avoid extracting superfluous data from EXIF and overflowing memory
-                tags = exifread.process_file(f, details=False)
-                path_to_image = os.path.join(path_with_images, filename)
-                data = get_new_name_for_photo(tags, path_to_image, filename)
-                if data != -1:
-                    images_with_info.append(data)
-
-
-def open_db():
-    # Open database which contains information how different tags from exif rename to normal names
-    # e.g 'NIKON CORPORATION' to 'Nikon' or 'chiron' to 'Mi MIx 2'
-    if not os.path.exists('db'):
-        os.mkdir('db')
-    shelve_db = shelve.open(os.path.join('db', 'tags_db'))
-    shelve_db['test'] = 'database ok'
-    if shelve_db['test']:
-        logConsole.debug('Database ok')
-        logFile.debug('Database ok')
-    return shelve_db
-
-
-def get_new_name_for_photo(exif, path_to_picture, original_filename):
+def get_new_name_for_photo(exif, path_to_picture, original_filename, db, name_strings):
 
     """
     Takes exif info of one page, covert it to appropriate name by the template, check if there are some duplicates
@@ -90,6 +46,8 @@ def get_new_name_for_photo(exif, path_to_picture, original_filename):
     :param original_filename: file name to compare with new name to avoid creating copies of the same file
     :param exif: exif data from current file
     :param path_to_picture: full path to picture
+    :param db: shelve object
+    :param name_strings: dict with strings how files are supposed to be renamed
     :return: list where first item is path to picture and the second is string with new name for picture OR
     returns -1 if file will not be renamed
     """
@@ -333,7 +291,7 @@ def get_new_name_for_photo(exif, path_to_picture, original_filename):
                  str(exif.get('Image DateTime', '')))
 
     if date_time == '':  # If there is no date and time in EXIF
-        print(path_to_picture + ' --- there is no EXIF data.\n')
+        print(path_to_picture + ' --- there is no EXIF data.')
         logFile.info(path_to_picture + ' --- there is no EXIF data.\n')
 
         #  if file mame matches pattern like 22-04-05_1304 -> rename it to pattern like 2005-04-22 13-04
@@ -417,6 +375,50 @@ def get_new_name_for_photo(exif, path_to_picture, original_filename):
     return one_image_with_info
 
 
+def process_files(path_with_images, db, name_strings):
+    # Recursively search for photos and extract exif info
+
+    images_with_info = []
+    images_no_exif_mark = 0  # counter of images that the script won't even open
+
+    image_extension = ('.jpg', '.jpeg')  # Files with only these extensions will be processed
+
+    for filename in os.listdir(path_with_images):
+        if filename.lower().endswith(image_extension):
+
+            # If filename has special "no exif" mark - don't even open it, just count and skip
+            if re.search(r'\(no exif\)', filename):
+                msg = ('{} has "no exif" mark thereby ' 
+                       'it will not be processed.'.format(os.path.join(path_with_images, filename)))
+                print(msg)
+                logFile.info(msg)
+                images_no_exif_mark += 1
+                continue
+
+            with open(os.path.join(path_with_images, filename), 'rb') as f:
+                # 'details=False' to avoid extracting superfluous data from EXIF and overflowing memory
+                tags = exifread.process_file(f, details=False)
+                path_to_image = os.path.join(path_with_images, filename)
+                data = get_new_name_for_photo(tags, path_to_image, filename, db, name_strings)
+                if data != -1:
+                    images_with_info.append(data)
+
+    return images_with_info, images_no_exif_mark
+
+
+def open_db():
+    # Open database which contains information how different tags from exif rename to normal names
+    # e.g 'NIKON CORPORATION' to 'Nikon' or 'chiron' to 'Mi MIx 2'
+    if not os.path.exists('db'):
+        os.mkdir('db')
+    shelve_db = shelve.open(os.path.join('db', 'tags_db'))
+    shelve_db['test'] = 'database ok'
+    if shelve_db['test']:
+        logConsole.debug('Database ok')
+        logFile.debug('Database ok')
+    return shelve_db
+
+
 def remove_copies():
     """
     Function for recursive removing files from list
@@ -432,12 +434,15 @@ def remove_copies():
     logFile.info('All old copies were removed')
 
 
-def rename_photos():
+def rename_photos(pics_to_rename):
     """
     Recursively rename photos
-    :return: doesn't get or return anything
+    :pics_to_rename: list with new filename and path to picture
+    :return: list of files which weren't copied because OS denied it
     """
-    for item in images_with_info:
+    perm_denied_files = []
+    for item in pics_to_rename:
+
         # Remove current name of file from full path to file and add a new name to path
         new_name = os.path.join(os.path.dirname(item[0]), item[1])
 
@@ -454,41 +459,15 @@ def rename_photos():
                 logFile.info(item[0] + ': ERROR: Permission denied.\n')
                 perm_denied_files.append(item[0])
 
-
-print('Hello! This script can help you to automatically rename your photos (jpg files) from whatever name they have to'
-      ' name like Date and time of creation + camera nad lens. For example: '
-      '2017-09-05 09-15-27 Canon EOS 80D EF-S24mm f2.8 STM.jpg')
+    return perm_denied_files
 
 
-while True:
-    path_to_look_for_photos = input('Please type in directory with your photos:\n')
-    logFile.info('Please type in directory with your photos:\n')
-    if os.path.exists(path_to_look_for_photos) and os.path.isdir(path_to_look_for_photos):
-        print('Gotcha!')
-        logFile.info('Path to look up for pictures to renames is ' + path_to_look_for_photos + '\n')
-        db = open_db()
-        process_files(path_to_look_for_photos)
-        db.close()
-        logFile.info('Database was closed successfully')
-        print('\nThere are ' + str(len(images_with_info)) + ' files to rename.')
-        logFile.info('')
-        logFile.info('There are ' + str(len(images_with_info)) + ' files to rename.')
-        print('There are ' + str(len(images_to_delete)) + ' old copies to delete.')
-        logFile.info('There are ' + str(len(images_to_delete)) + ' old copies to delete.')
-        break
-    else:
-        print('This path doesn\'t exist. Try another one')
-        continue
-
-if images_no_exif_mark > 0:
-    print('Attention. There are {} images with "no exif" mark. They will not be processed.'.format(images_no_exif_mark))
-
-if len(images_with_info) > 0:
+def ask_show_files_to_rename(pics_to_rename):
     while True:
         see_rename_list_or_not = input('Do you want to see list of files to be renamed? y/n: ')
         logFile.info('Do you want to see list of files to be renamed? y/n: \n')
         if see_rename_list_or_not.lower() == 'y':
-            for item in images_with_info:
+            for item in pics_to_rename:
                 print('"{}" will be renamed as "{}.jpg"'.format(item[0], item[1]))
             break
         elif see_rename_list_or_not.lower() == 'n':
@@ -497,53 +476,118 @@ if len(images_with_info) > 0:
             print('It is wrong input, try again.')
             logFile.info('It is wrong input, try again.\n')
 
-if len(images_with_info) > 0:
+
+def ask_to_rename_files(pics_to_rename):
     while True:
         rename_or_not = input('Do you want to rename these photos? y/n: ')
         logFile.info('Do you want to rename these photos? y/n: \n')
         if rename_or_not.lower() == 'y':
-            rename_photos()
-            break
+            unsuccessful_to_copy_files = rename_photos(pics_to_rename)
+            return unsuccessful_to_copy_files
         elif rename_or_not.lower() == 'n':
             print('Ciao!')
             logFile.info('Ciao!\n')
-            break
+            return []
         else:
             print('It is wrong input, try again.')
             logFile.info('It is wrong input, try again.\n')
 
-if len(images_to_delete) > 0:
+
+def ask_show_files_to_delete():
     while True:
         see_list_to_delete = input('Do you want to see list of files to be deleted? y/n: ')
         logFile.info('Do you want to see list of files to be deleted? y/n: \n')
         if see_list_to_delete.lower() == 'y':
             for item in images_to_delete:
                 print(item + ' will be deleted')
-            break
+            return
         elif see_list_to_delete.lower() == 'n':
-            break
+            return
         else:
             print('It is wrong input, try again.')
             logFile.info('It is wrong input, try again.\n')
 
-if len(images_to_delete) > 0:
+
+def ask_to_delete_files():
     while True:
         delete_or_not = input('Do you want to delete old copies? y/n: ')
         logFile.info('Do you want to delete old copies? y/n: \n')
         if delete_or_not.lower() == 'y':
             remove_copies()
-            break
+            return
         elif delete_or_not.lower() == 'n':
             print('Ciao!')
             logFile.info('Ciao!\n')
-            break
+            return
         else:
             print('It is wrong input, try again.')
             logFile.info('It is wrong input, try again.\n')
 
-if len(perm_denied_files) > 0:
-    print(str(len(perm_denied_files)) + ' files were skipped because OS denied permission.')
-    logFile.info(str(len(perm_denied_files)) + ' files were skipped because OS denied permission.\n')
-    print('There are these files: ')
-    for item in perm_denied_files:
-        print(item)
+
+def main():
+    global unknown_camera
+
+    print('Hello! This script can help you to automatically rename your photos (jpg files) '
+          'from whatever name they have to'
+          ' name like Date and time of creation + camera nad lens. For example: '
+          '2017-09-05 09-15-27 Canon EOS 80D EF-S24mm f2.8 STM.jpg')
+
+    # main flow of script
+    while True:
+        path_to_look_for_photos = input('Please type in directory with your photos:\n')
+        logFile.info('Please type in directory with your photos:\n')
+        if os.path.exists(path_to_look_for_photos) and os.path.isdir(path_to_look_for_photos):
+            print('Gotcha!')
+            logFile.info('Path to look up for pictures to renames is ' + path_to_look_for_photos + '\n')
+
+            for root, subfolders, files in os.walk(path_to_look_for_photos):
+
+                print('Going inside {} in 3 seconds'.format(root))
+                time.sleep(3)
+                # Dict where key is a final new name of a photo and values is a full path to this photo
+                name_strings = {}
+
+                db = open_db()
+                files_to_rename, pics_without_exif = process_files(root, db, name_strings)
+                db.close()
+
+                logFile.info('Database was closed successfully')
+                print('Now we inside {}:'.format(root))
+                logFile.info('Now we inside {}:'.format(root))
+                print('There are ' + str(len(files_to_rename)) + ' files to rename.')
+                logFile.info('')
+                logFile.info('There are ' + str(len(files_to_rename)) + ' files to rename.')
+                print('There are ' + str(len(images_to_delete)) + ' old copies to delete.')
+                logFile.info('There are ' + str(len(images_to_delete)) + ' old copies to delete.')
+
+                if pics_without_exif > 0:
+                    print('Attention. There are {} images with "no exif" mark. They will not be processed.'.format(
+                        pics_without_exif))
+
+                if len(files_to_rename) > 0:
+                    ask_show_files_to_rename(files_to_rename)
+                    not_copied_files = ask_to_rename_files(files_to_rename)
+
+                    if len(not_copied_files) > 0:
+                        print(str(len(not_copied_files)) + ' files were skipped because OS denied permission.')
+                        logFile.info(str(len(not_copied_files)) + ' files were skipped because OS denied permission.\n')
+                        print('There are these files: ')
+                        for item in not_copied_files:
+                            print(item)
+
+                if len(images_to_delete) > 0:
+                    ask_show_files_to_delete()
+                    ask_to_delete_files()
+                    images_to_delete[:] = []
+
+                print()
+                unknown_camera = ''
+
+            print('There is nothing to look for anymore. Bye!')
+            break
+        else:
+            print('This path doesn\'t exist. Try another one')
+        continue
+
+
+main()
